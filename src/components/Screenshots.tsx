@@ -1,0 +1,295 @@
+import React, { useEffect, useState } from 'react';
+import { useStore } from '../lib/store';
+import { supabase } from '../lib/supabase';
+import { Camera, Monitor, Clock, AlertCircle, Search, Filter, User } from 'lucide-react';
+import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
+
+interface Screenshot {
+  id: string;
+  time_entry_id: string;
+  storage_path: string;
+  taken_at: string;
+  type: 'screen' | 'webcam';
+  user: {
+    full_name: string;
+  };
+}
+
+interface FilterOptions {
+  dateRange: {
+    start: string;
+    end: string;
+  };
+  timeRange: {
+    start: string;
+    end: string;
+  };
+  userName: string;
+}
+
+export default function Screenshots() {
+  const user = useStore((state) => state.user);
+  const [screenshots, setScreenshots] = useState<Screenshot[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState<FilterOptions>({
+    dateRange: {
+      start: '',
+      end: '',
+    },
+    timeRange: {
+      start: '',
+      end: '',
+    },
+    userName: '',
+  });
+
+  useEffect(() => {
+    fetchScreenshots();
+  }, [user]);
+
+  const fetchScreenshots = async () => {
+    if (!user) return;
+    
+    try {
+      let query = supabase
+        .from('screenshots')
+        .select(`
+          *,
+          time_entries!inner(
+            user_id,
+            profiles!inner(full_name)
+          )
+        `)
+        .order('taken_at', { ascending: false });
+
+      if (user?.role !== 'admin') {
+        if (user?.role === 'manager') {
+          query = query.in('time_entries.user_id', 
+            supabase
+              .from('profiles')
+              .select('id')
+              .eq('manager_id', user.id)
+          );
+        } else {
+          query = query.eq('time_entries.user_id', user?.id);
+        }
+      }
+
+      const { data, error: fetchError } = await query;
+
+      if (fetchError) throw fetchError;
+
+      const screenshotsWithUrls = await Promise.all((data || []).map(async (screenshot) => {
+        const { data: urlData } = await supabase.storage
+          .from('screenshots')
+          .createSignedUrl(screenshot.storage_path, 3600);
+
+        return {
+          ...screenshot,
+          url: urlData?.signedUrl,
+          user: {
+            full_name: screenshot.time_entries.profiles.full_name
+          }
+        };
+      }));
+
+      setScreenshots(screenshotsWithUrls);
+    } catch (error) {
+      console.error('Error fetching screenshots:', error);
+      setError('Failed to load screenshots');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredScreenshots = screenshots.filter(screenshot => {
+    const screenshotDate = new Date(screenshot.taken_at);
+    const matchesSearch = screenshot.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         screenshot.user.full_name.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    let matchesDateRange = true;
+    if (filters.dateRange.start && filters.dateRange.end) {
+      matchesDateRange = isWithinInterval(screenshotDate, {
+        start: startOfDay(new Date(filters.dateRange.start)),
+        end: endOfDay(new Date(filters.dateRange.end))
+      });
+    }
+
+    let matchesTimeRange = true;
+    if (filters.timeRange.start && filters.timeRange.end) {
+      const time = format(screenshotDate, 'HH:mm');
+      matchesTimeRange = time >= filters.timeRange.start && time <= filters.timeRange.end;
+    }
+
+    let matchesUserName = true;
+    if (filters.userName) {
+      matchesUserName = screenshot.user.full_name.toLowerCase().includes(filters.userName.toLowerCase());
+    }
+
+    return matchesSearch && matchesDateRange && matchesTimeRange && matchesUserName;
+  });
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white shadow rounded-lg p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center">
+            <Camera className="h-8 w-8 text-indigo-600" />
+            <h2 className="ml-3 text-2xl font-bold text-gray-900">Screenshots</h2>
+          </div>
+          <div className="flex space-x-4">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search screenshots..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+              <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+            </div>
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              <Filter className="h-5 w-5 mr-2" />
+              Filters
+            </button>
+          </div>
+        </div>
+
+        {error && (
+          <div className="mb-6 flex items-center p-4 text-red-800 bg-red-50 rounded-lg">
+            <AlertCircle className="h-5 w-5 mr-2" />
+            {error}
+          </div>
+        )}
+
+        {showFilters && (
+          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
+                <div className="flex space-x-2">
+                  <input
+                    type="date"
+                    value={filters.dateRange.start}
+                    onChange={(e) => setFilters({
+                      ...filters,
+                      dateRange: { ...filters.dateRange, start: e.target.value }
+                    })}
+                    className="border border-gray-300 rounded-md p-2"
+                  />
+                  <input
+                    type="date"
+                    value={filters.dateRange.end}
+                    onChange={(e) => setFilters({
+                      ...filters,
+                      dateRange: { ...filters.dateRange, end: e.target.value }
+                    })}
+                    className="border border-gray-300 rounded-md p-2"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Time Range</label>
+                <div className="flex space-x-2">
+                  <input
+                    type="time"
+                    value={filters.timeRange.start}
+                    onChange={(e) => setFilters({
+                      ...filters,
+                      timeRange: { ...filters.timeRange, start: e.target.value }
+                    })}
+                    className="border border-gray-300 rounded-md p-2"
+                  />
+                  <input
+                    type="time"
+                    value={filters.timeRange.end}
+                    onChange={(e) => setFilters({
+                      ...filters,
+                      timeRange: { ...filters.timeRange, end: e.target.value }
+                    })}
+                    className="border border-gray-300 rounded-md p-2"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">User Name</label>
+                <input
+                  type="text"
+                  placeholder="Filter by user name..."
+                  value={filters.userName}
+                  onChange={(e) => setFilters({
+                    ...filters,
+                    userName: e.target.value
+                  })}
+                  className="w-full border border-gray-300 rounded-md p-2"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="text-gray-500">Loading screenshots...</div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredScreenshots.map((screenshot) => (
+              <div key={screenshot.id} className="bg-gray-50 rounded-lg overflow-hidden shadow-sm">
+                {screenshot.url ? (
+                  <img
+                    src={screenshot.url}
+                    alt={`Screenshot from ${format(parseISO(screenshot.taken_at), 'PPp')}`}
+                    className="w-full h-48 object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-48 flex items-center justify-center bg-gray-100">
+                    <span className="text-gray-400">Image not available</span>
+                  </div>
+                )}
+                <div className="p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center">
+                      {screenshot.type === 'webcam' ? (
+                        <Camera className="h-4 w-4 text-indigo-600 mr-1" />
+                      ) : (
+                        <Monitor className="h-4 w-4 text-indigo-600 mr-1" />
+                      )}
+                      <span className="text-sm font-medium text-gray-900">
+                        {screenshot.type === 'webcam' ? 'Webcam' : 'Screen'} Capture
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-sm text-gray-500 mb-1 flex items-center">
+                    <User className="h-4 w-4 mr-1" />
+                    {screenshot.user.full_name}
+                  </div>
+                  <div className="flex items-center text-sm text-gray-500">
+                    <Clock className="h-4 w-4 mr-1" />
+                    {format(parseISO(screenshot.taken_at), 'PPp')}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {filteredScreenshots.length === 0 && !loading && (
+          <div className="text-center py-12">
+            <Camera className="mx-auto h-12 w-12 text-gray-400" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900">No screenshots found</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              {screenshots.length === 0 ? 'No screenshots have been captured yet.' : 'No screenshots match your search criteria.'}
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
