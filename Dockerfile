@@ -22,6 +22,3 @@ ENV VITE_APP_ENV=development
 
 # Command to run the app (for Vite development server)
 CMD ["npm", "run", "dev", "--", "--host"]
-
-
-# Allowed host
