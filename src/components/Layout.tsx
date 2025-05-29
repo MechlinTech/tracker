@@ -112,7 +112,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   </Link>
                 )
               )}
-              <div className="border-t border-gray-200 my-2"></div>
               <Link
                 to="/profile"
                 className={`nav-link ${isActive('/profile') ? 'nav-link-active' : 'nav-link-inactive'}`}

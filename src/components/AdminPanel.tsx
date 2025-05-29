@@ -264,35 +264,141 @@ export default function AdminPanel() {
     if (!userToDelete) return;
 
     try {
-      // First delete all related records
-      // Delete screenshots
-      console.log(`Attempting to delete screenshots for user: ${userToDelete.id}`);
-      const { error: screenshotsError } = await supabase
-        .from('screenshots')
-        .delete()
-        .eq('user_id', userToDelete.id);
+      // First delete all related records in dependency order
 
-      if (screenshotsError) {
-        console.error('Supabase screenshots deletion error:', screenshotsError);
-        throw screenshotsError;
-      }
-      console.log(`Successfully deleted screenshots for user: ${userToDelete.id}`);
-
-      // Delete time entries
-      console.log(`Attempting to delete time entries for user: ${userToDelete.id}`);
-      const { error: timeEntriesError } = await supabase
+      // Get time entry IDs for the user (needed for screenshots and activity logs)
+      console.log(`Attempting to get time entry IDs for user: ${userToDelete.id}`);
+      const { data: timeEntries, error: timeEntriesFetchError } = await supabase
         .from('time_entries')
-        .delete()
+        .select('id')
         .eq('user_id', userToDelete.id);
 
-      if (timeEntriesError) {
-        console.error('Supabase time entries deletion error:', timeEntriesError);
-        throw timeEntriesError;
+      if (timeEntriesFetchError) {
+        console.error('Supabase time entries fetch error during deletion:', timeEntriesFetchError);
+        throw timeEntriesFetchError;
       }
-      console.log(`Successfully deleted time entries for user: ${userToDelete.id}`);
+      const timeEntryIds = timeEntries?.map(entry => entry.id) || [];
+      console.log(`Found ${timeEntryIds.length} time entries for user: ${userToDelete.id}`);
 
-      // Delete any other user-related records (add more if needed)
-      // For example, if you have a notifications table:
+      // Get screenshot IDs related to user's time entries (needed for activity logs)
+      let screenshotIds: string[] = [];
+      if (timeEntryIds.length > 0) {
+        console.log(`Attempting to get screenshot IDs for user's time entries: ${timeEntryIds}`);
+        const { data: screenshots, error: screenshotsFetchError } = await supabase
+          .from('screenshots')
+          .select('id')
+          .in('time_entry_id', timeEntryIds);
+
+        if (screenshotsFetchError) {
+          console.error('Supabase screenshots fetch error during deletion:', screenshotsFetchError);
+          throw screenshotsFetchError;
+        }
+        screenshotIds = screenshots?.map(screenshot => screenshot.id) || [];
+        console.log(`Found ${screenshotIds.length} screenshots for user's time entries.`);
+      } else {
+        console.log(`No time entries found, skipping screenshot ID fetch.`);
+      }
+
+      // Delete activity logs related to user's screenshots
+      if (screenshotIds.length > 0) {
+        console.log(`Attempting to delete activity logs for user's screenshots: ${screenshotIds}`);
+        const { error: activityLogsError } = await supabase
+          .from('activity_logs')
+          .delete()
+          .in('screenshot_id', screenshotIds);
+
+        if (activityLogsError) {
+          console.error('Supabase activity logs deletion error:', activityLogsError);
+          throw activityLogsError;
+        }
+        console.log(`Successfully deleted activity logs for user's screenshots.`);
+      } else {
+        console.log(`No screenshots found, skipping activity log deletion for user: ${userToDelete.id}`);
+      }
+
+      // Delete screenshots related to user's time entries
+      if (timeEntryIds.length > 0) {
+        console.log(`Attempting to delete screenshots for user's time entries: ${timeEntryIds}`);
+        const { error: screenshotsError } = await supabase
+          .from('screenshots')
+          .delete()
+          .in('time_entry_id', timeEntryIds);
+
+        if (screenshotsError) {
+          console.error('Supabase screenshots deletion error:', screenshotsError);
+          throw screenshotsError;
+        }
+        console.log(`Successfully deleted screenshots for user's time entries.`);
+      } else {
+         console.log(`No time entries found, skipping screenshot deletion.`);
+      }
+
+      // Get leave request IDs for the user
+      console.log(`Attempting to get leave request IDs for user: ${userToDelete.id}`);
+      const { data: leaveRequests, error: leaveRequestsFetchError } = await supabase
+        .from('leave_requests')
+        .select('id')
+        .eq('user_id', userToDelete.id);
+
+      if (leaveRequestsFetchError) {
+        console.error('Supabase leave requests fetch error during deletion:', leaveRequestsFetchError);
+        throw leaveRequestsFetchError;
+      }
+      const leaveRequestIds = leaveRequests?.map(request => request.id) || [];
+      console.log(`Found ${leaveRequestIds.length} leave requests for user: ${userToDelete.id}`);
+
+      // Delete leave approvers related to user's leave requests
+      if (leaveRequestIds.length > 0) {
+        console.log(`Attempting to delete leave approvers for user's leave requests: ${leaveRequestIds}`);
+        const { error: leaveApproversError } = await supabase
+          .from('leave_approvers')
+          .delete()
+          .in('leave_request_id', leaveRequestIds);
+
+        if (leaveApproversError) {
+          console.error('Supabase leave approvers deletion error:', leaveApproversError);
+          throw leaveApproversError;
+        }
+        console.log(`Successfully deleted leave approvers for user's leave requests.`);
+      } else {
+        console.log(`No leave requests found, skipping leave approvers deletion.`);
+      }
+
+      // Delete leave requests for the user
+      if (leaveRequestIds.length > 0) {
+         console.log(`Attempting to delete leave requests for user: ${userToDelete.id}`);
+         const { error: leaveRequestsError } = await supabase
+           .from('leave_requests')
+           .delete()
+           .eq('user_id', userToDelete.id);
+
+         if (leaveRequestsError) {
+           console.error('Supabase leave requests deletion error:', leaveRequestsError);
+           throw leaveRequestsError;
+         }
+         console.log(`Successfully deleted leave requests for user.`);
+      } else {
+         console.log(`No leave requests found, skipping leave requests deletion.`);
+      }
+
+      // Delete time entries for the user (already fetched IDs earlier)
+      if (timeEntryIds.length > 0) {
+        console.log(`Attempting to delete time entries for user: ${userToDelete.id}`);
+        const { error: timeEntriesError } = await supabase
+          .from('time_entries')
+          .delete()
+          .eq('user_id', userToDelete.id);
+
+        if (timeEntriesError) {
+          console.error('Supabase time entries deletion error:', timeEntriesError);
+          throw timeEntriesError;
+        }
+        console.log(`Successfully deleted time entries for user.`);
+      } else {
+        console.log(`No time entries found, skipping time entries deletion.`);
+      }
+
+      // Delete notifications for the user
       console.log(`Attempting to delete notifications for user: ${userToDelete.id}`);
       const { error: notificationsError } = await supabase
         .from('notifications')
@@ -318,15 +424,15 @@ export default function AdminPanel() {
       }
       console.log(`Successfully deleted profile for user: ${userToDelete.id}`);
 
-      // Finally, delete user's auth account
+      // Finally, delete user's auth account using a serverless function
       console.log(`Attempting to delete auth user: ${userToDelete.id}`);
-      const { error: authError } = await supabase.auth.admin.deleteUser(
-        userToDelete.id
-      );
+      const { error: deleteUserError } = await supabase.functions.invoke('delete-user', {
+        body: { userId: userToDelete.id }
+      });
 
-      if (authError) {
-        console.error('Supabase auth user deletion error:', authError);
-        throw authError;
+      if (deleteUserError) {
+        console.error('Error calling delete-user function:', deleteUserError);
+        throw deleteUserError;
       }
       console.log(`Successfully deleted auth user: ${userToDelete.id}`);
 
@@ -335,6 +441,7 @@ export default function AdminPanel() {
       setManagers(managers.filter(manager => manager.id !== userToDelete.id));
       setShowDeleteConfirm(false);
       setUserToDelete(null);
+      setError(null);
     } catch (error) {
       console.error('Error during user deletion process:', error);
       setError('Failed to delete user and their records. Please try again.');
@@ -392,69 +499,73 @@ export default function AdminPanel() {
 
         {showAddUser && (
           <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium">Add New User</h3>
+            <div className="bg-white rounded-lg p-8 max-w-md w-full shadow-xl transform transition-all sm:align-middle">
+              <div className="flex justify-between items-center mb-6 border-b pb-4">
+                <h3 className="text-xl font-semibold text-gray-900">Add New User</h3>
                 <button
                   onClick={() => setShowAddUser(false)}
-                  className="text-gray-400 hover:text-gray-500"
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
                 >
-                  <X className="h-5 w-5" />
+                  <X className="h-6 w-6" />
                 </button>
               </div>
-              <form onSubmit={handleCreateUser} className="space-y-4">
+              <form onSubmit={handleCreateUser} className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Email</label>
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                   <input
                     type="email"
+                    id="email"
                     required
                     value={newUser.email}
                     onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    className="block w-full rounded-md border border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Initial Password</label>
+                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">Initial Password</label>
                   <div className="relative">
                     <input
                       type={showPassword ? 'text' : 'password'}
+                      id="password"
                       required
                       value={newUser.password}
                       onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm pr-10"
+                      className="block w-full rounded-md border border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm pr-10 px-3 py-2"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
                     >
                       {showPassword ? (
-                        <EyeOff className="h-5 w-5 text-gray-400" />
+                        <EyeOff className="h-5 w-5" />
                       ) : (
-                        <Eye className="h-5 w-5 text-gray-400" />
+                        <Eye className="h-5 w-5" />
                       )}
                     </button>
                   </div>
-                  <p className="mt-1 text-sm text-gray-500">
-                    User will be required to change this password on first login
+                  <p className="mt-1 text-xs text-gray-500">
+                    User will be required to change this password on first login.
                   </p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Full Name</label>
+                  <label htmlFor="full_name" className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
                   <input
                     type="text"
+                    id="full_name"
                     required
                     value={newUser.full_name}
                     onChange={(e) => setNewUser({ ...newUser, full_name: e.target.value })}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    className="block w-full rounded-md border border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Role</label>
+                  <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">Role</label>
                   <select
+                    id="role"
                     value={newUser.role}
                     onChange={(e) => setNewUser({ ...newUser, role: e.target.value as User['role'] })}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    className="block w-full rounded-md border border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm pl-3 pr-10 py-2"
                   >
                     {USER_ROLES.map(role => (
                       <option key={role.value} value={role.value}>{role.label}</option>
@@ -462,11 +573,12 @@ export default function AdminPanel() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Manager</label>
+                  <label htmlFor="manager" className="block text-sm font-medium text-gray-700 mb-1">Manager</label>
                   <select
+                    id="manager"
                     value={newUser.manager_id || 'none'}
                     onChange={(e) => setNewUser({ ...newUser, manager_id: e.target.value === 'none' ? null : e.target.value })}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    className="block w-full rounded-md border border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm pl-3 pr-10 py-2"
                   >
                     <option value="none">No Manager</option>
                     {managers.map((manager) => (
@@ -475,11 +587,12 @@ export default function AdminPanel() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Team</label>
+                  <label htmlFor="team" className="block text-sm font-medium text-gray-700 mb-1">Team</label>
                   <select
+                    id="team"
                     value={newUser.team}
                     onChange={(e) => setNewUser({ ...newUser, team: e.target.value })}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    className="block w-full rounded-md border border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm pl-3 pr-10 py-2"
                   >
                     <option value="">Select Team</option>
                     {PREDEFINED_TEAMS.map((team) => (
@@ -492,21 +605,27 @@ export default function AdminPanel() {
                       placeholder="Enter custom team name"
                       value={newUser.customTeam}
                       onChange={(e) => setNewUser({ ...newUser, customTeam: e.target.value })}
-                      className="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                      className="mt-2 block w-full rounded-md border border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2"
                     />
                   )}
                 </div>
-                <div className="mt-4 flex justify-end space-x-3">
+                {error && (
+                  <div className="bg-red-50 border border-red-200 rounded-md p-3 text-sm text-red-700 flex items-center">
+                    <AlertCircle className="h-4 w-4 mr-2" />
+                    {error}
+                  </div>
+                )}
+                <div className="mt-6 flex justify-end space-x-3">
                   <button
                     type="button"
                     onClick={() => setShowAddUser(false)}
-                    className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
                   >
                     Create User
                   </button>
@@ -625,7 +744,7 @@ export default function AdminPanel() {
                     <select
                       value={user.role}
                       onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                      className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                      className="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
                     >
                       {USER_ROLES.map(role => (
                         <option key={role.value} value={role.value}>{role.label}</option>
@@ -636,7 +755,7 @@ export default function AdminPanel() {
                     <select
                       value={user.manager_id || 'none'}
                       onChange={(e) => handleManagerChange(user.id, e.target.value)}
-                      className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                      className="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
                       disabled={user.role === 'admin'}
                     >
                       <option value="none">No Manager</option>
@@ -651,7 +770,7 @@ export default function AdminPanel() {
                     <select
                       value={user.team || ''}
                       onChange={(e) => handleTeamChange(user.id, e.target.value)}
-                      className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                      className="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
                     >
                       <option value="">Select Team</option>
                       {PREDEFINED_TEAMS.map((team) => (
@@ -663,7 +782,7 @@ export default function AdminPanel() {
                         type="text"
                         value={user.team}
                         onChange={(e) => handleTeamChange(user.id, e.target.value)}
-                        className="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        className="mt-2 block w-full rounded-md border border-gray-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2"
                       />
                     )}
                   </td>
