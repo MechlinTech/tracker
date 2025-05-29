@@ -1,0 +1,48 @@
+name: Build and Push Docker Image
+
+# Trigger the workflow on push to main and production branches
+on:
+  push:
+    branches:
+      - main    # Trigger for main (dev) branch
+      - production   # Trigger for production branch
+  workflow_dispatch:  # Allow manual triggering of the workflow
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest  # Use an Ubuntu VM for this job
+
+    steps:
+      # Step 1: Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      # Step 2: Log in to Docker Hub
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}  # Reference the secret for Docker Hub username
+          password: ${{ secrets.DOCKER_PASSWORD }}   # Docker Hub Password stored as a secret
+
+      # Step 3: Set up Docker Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      # Step 4: Determine the Docker tag based on the branch
+      - name: Set Docker Tag
+        id: set_tag
+        run: |
+          if [ "${GITHUB_REF}" == "refs/heads/main" ]; then
+            echo "TAG=dev" >> $GITHUB_ENV
+          elif [ "${GITHUB_REF}" == "refs/heads/production" ]; then
+            echo "TAG=prod" >> $GITHUB_ENV
+          fi
+
+      # Step 5: Build and push the Docker image based on the environment (dev or prod)
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v2
+        with:
+          context: .  # Set the context to the repository root
+          file: ./Dockerfile  # Path to your Dockerfile
+          push: true  # Push the image to Docker Hub
+          tags: timetracker154/time-tracker-image:${{ env.TAG }}  # Tag for Docker image (dev or prod)
