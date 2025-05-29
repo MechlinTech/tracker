@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Settings, Users, AlertCircle, Clock, Monitor, Download, Search, Plus, X, Eye, EyeOff } from 'lucide-react';
+import { Settings, Users, AlertCircle, Clock, Monitor, Download, Search, Plus, X, Eye, EyeOff, Trash2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { format, parseISO } from 'date-fns';
 
@@ -48,6 +48,8 @@ export default function AdminPanel() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddUser, setShowAddUser] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [newUser, setNewUser] = useState<NewUser>({
     email: '',
     password: '',
@@ -258,6 +260,87 @@ export default function AdminPanel() {
     }
   };
 
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+
+    try {
+      // First delete all related records
+      // Delete screenshots
+      console.log(`Attempting to delete screenshots for user: ${userToDelete.id}`);
+      const { error: screenshotsError } = await supabase
+        .from('screenshots')
+        .delete()
+        .eq('user_id', userToDelete.id);
+
+      if (screenshotsError) {
+        console.error('Supabase screenshots deletion error:', screenshotsError);
+        throw screenshotsError;
+      }
+      console.log(`Successfully deleted screenshots for user: ${userToDelete.id}`);
+
+      // Delete time entries
+      console.log(`Attempting to delete time entries for user: ${userToDelete.id}`);
+      const { error: timeEntriesError } = await supabase
+        .from('time_entries')
+        .delete()
+        .eq('user_id', userToDelete.id);
+
+      if (timeEntriesError) {
+        console.error('Supabase time entries deletion error:', timeEntriesError);
+        throw timeEntriesError;
+      }
+      console.log(`Successfully deleted time entries for user: ${userToDelete.id}`);
+
+      // Delete any other user-related records (add more if needed)
+      // For example, if you have a notifications table:
+      console.log(`Attempting to delete notifications for user: ${userToDelete.id}`);
+      const { error: notificationsError } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('user_id', userToDelete.id);
+
+      if (notificationsError) {
+        console.error('Supabase notifications deletion error:', notificationsError);
+        throw notificationsError;
+      }
+      console.log(`Successfully deleted notifications for user: ${userToDelete.id}`);
+
+      // Delete user's profile
+      console.log(`Attempting to delete profile for user: ${userToDelete.id}`);
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', userToDelete.id);
+
+      if (profileError) {
+        console.error('Supabase profile deletion error:', profileError);
+        throw profileError;
+      }
+      console.log(`Successfully deleted profile for user: ${userToDelete.id}`);
+
+      // Finally, delete user's auth account
+      console.log(`Attempting to delete auth user: ${userToDelete.id}`);
+      const { error: authError } = await supabase.auth.admin.deleteUser(
+        userToDelete.id
+      );
+
+      if (authError) {
+        console.error('Supabase auth user deletion error:', authError);
+        throw authError;
+      }
+      console.log(`Successfully deleted auth user: ${userToDelete.id}`);
+
+      // Update local state
+      setUsers(users.filter(user => user.id !== userToDelete.id));
+      setManagers(managers.filter(manager => manager.id !== userToDelete.id));
+      setShowDeleteConfirm(false);
+      setUserToDelete(null);
+    } catch (error) {
+      console.error('Error during user deletion process:', error);
+      setError('Failed to delete user and their records. Please try again.');
+    }
+  };
+
   const filteredUsers = users.filter(user =>
     user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.team?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -433,6 +516,62 @@ export default function AdminPanel() {
           </div>
         )}
 
+        {showDeleteConfirm && userToDelete && (
+          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium text-red-600">Confirm User Deletion</h3>
+                <button
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setUserToDelete(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-500"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="space-y-4">
+                <p className="text-gray-700">
+                  Are you sure you want to delete <span className="font-semibold">{userToDelete.full_name}</span>?
+                </p>
+                <div className="bg-red-50 border border-red-200 rounded-md p-4">
+                  <p className="text-sm text-red-700">
+                    This action will permanently delete:
+                  </p>
+                  <ul className="mt-2 text-sm text-red-700 list-disc list-inside space-y-1">
+                    <li>User's profile information</li>
+                    <li>All time entries</li>
+                    <li>All screenshots</li>
+                    <li>All notifications</li>
+                    <li>User's authentication account</li>
+                  </ul>
+                  <p className="mt-2 text-sm font-medium text-red-700">
+                    This action cannot be undone.
+                  </p>
+                </div>
+                <div className="flex justify-end space-x-3">
+                  <button
+                    onClick={() => {
+                      setShowDeleteConfirm(false);
+                      setUserToDelete(null);
+                    }}
+                    className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDeleteUser}
+                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                  >
+                    Delete User and All Records
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="mb-6">
           <div className="relative">
             <input
@@ -464,6 +603,9 @@ export default function AdminPanel() {
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Activity
+                </th>
+                <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
                 </th>
               </tr>
             </thead>
@@ -536,6 +678,18 @@ export default function AdminPanel() {
                         {user.screenshots_count} Screenshots
                       </div>
                     </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-center">
+                    <button
+                      onClick={() => {
+                        setUserToDelete(user);
+                        setShowDeleteConfirm(true);
+                      }}
+                      className="text-red-600 hover:text-red-900"
+                      title="Delete User"
+                    >
+                      <Trash2 className="h-5 w-5" />
+                    </button>
                   </td>
                 </tr>
               ))}

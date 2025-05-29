@@ -11,9 +11,10 @@ import {
   Calendar,
   FileText,
   ChevronDown,
-  Menu
+  Menu,
+  User
 } from 'lucide-react';
-import Notifications from './Notifications';
+import UserMenu from './UserMenu';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
@@ -39,10 +40,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { name: 'Admin', path: '/admin', icon: Settings, show: user?.role === 'admin' }
   ];
 
+  const adminNavigation = [
+    { name: 'Admin Panel', path: '/admin' },
+    { name: 'HR Management', path: '/hr' },
+    { name: 'Leave Management', path: '/leave' },
+  ];
+
   return (
     <div className="min-h-screen flex flex-col">
       <nav className="sticky top-0 z-40 glass-panel border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-2 sm:px-3 lg:px-4">
           <div className="flex justify-between h-16 py-2">
             <div className="flex">
               <div className="flex-shrink-0 flex items-center">
@@ -59,7 +66,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     <Link
                       key={item.path}
                       to={item.path}
-                      className={`nav-link ${isActive(item.path) ? 'nav-link-active' : 'nav-link-inactive'}`}
+                      className={`nav-link ${isActive(item.path) ? 'nav-link-active' : 'nav-link-inactive'} ${item.name === 'Time Tracker' ? 'whitespace-nowrap' : ''}`}
                     >
                       <item.icon className="h-4 w-4 mr-2" />
                       {item.name}
@@ -68,21 +75,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 )}
               </div>
             </div>
-            <div className="flex items-center space-x-4 px-2">
-              <button 
+            
+            <div className="flex items-center space-x-4 px-2 ml-auto">
+              {/* <button 
                 onClick={handleLogout} 
                 className="flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors duration-200 ml-8"
               >
                 <LogOut className="h-4 w-4" />
                 <span className="hidden sm:block ml-2">Logout</span>
-              </button>
-              <div className="flex items-center space-x-2">
-                <div className="hidden sm:flex items-center space-x-2 px-4 py-2 bg-surface-50 rounded-xl">
-                  <span className="text-sm font-medium text-surface-900">{user?.full_name}</span>
-                  <ChevronDown className="h-4 w-4 text-surface-500" />
-                </div>
-                <Notifications />
-              </div>
+              </button> */}
+              <UserMenu className="hidden lg:block"/>
               <button
                 className="lg:hidden btn-ghost p-2"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -110,17 +112,33 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   </Link>
                 )
               )}
+              <div className="border-t border-gray-200 my-2"></div>
+              <Link
+                to="/profile"
+                className={`nav-link ${isActive('/profile') ? 'nav-link-active' : 'nav-link-inactive'}`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <User className="h-4 w-4 mr-2" />
+                Profile
+              </Link>
+              <button
+                onClick={() => { handleLogout(); setMobileMenuOpen(false); }}
+                className="nav-link nav-link-inactive text-red-600"
+              >
+                 <LogOut className="h-4 w-4 mr-2" />
+                 Sign Out
+              </button>
             </div>
           </div>
         )}
       </nav>
 
-      <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-grow container mx-auto px-2 sm:px-3 lg:px-4 py-8">
         {children}
       </main>
 
       <footer className="mt-auto glass-panel border-t py-4">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-2 sm:px-3 lg:px-4">
           <div className="flex justify-between items-center">
             <p className="text-sm text-surface-500">
               © {new Date().getFullYear()} TimeTracker Pro. All rights reserved.
