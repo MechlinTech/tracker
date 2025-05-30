@@ -45,4 +45,4 @@ jobs:
           context: .  # Set the context to the repository root
           file: ./Dockerfile  # Path to your Dockerfile
           push: true  # Push the image to Docker Hub
-          tags: timetracker154/time-tracker-image:${{ env.TAG }}  # Tag for Docker image (dev or prod)
+          tags: tech120/time-tracker-image:${{ env.TAG }}  # Tag for Docker image (dev or prod)
