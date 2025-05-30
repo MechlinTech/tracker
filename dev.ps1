@@ -1,6 +1,6 @@
 # Set variables for development container and image tag
 $devContainer = "Timetracker-dev"
-$devImage = "timetracker154/time-tracker-image:dev"    # You may need to pull this or build it as well
+$devImage = "tech120/time-tracker-image:dev"    # You may need to pull this or build it as well
 $devImageTag = "time-tracker-image-dev"
 
 # Pull the development image from the registry
