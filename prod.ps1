@@ -1,6 +1,6 @@
 # Set variables for production container and image tag
 $prodContainer = "Timetracker-prod"
-$prodImage = "timetracker154/time-tracker-image:prod"  # Pulling directly from the image registry
+$prodImage = "tech120/time-tracker-image:prod"  # Pulling directly from the image registry
 $prodImageTag = "time-tracker-image-prod"
 
 # Pull the production image from the registry
