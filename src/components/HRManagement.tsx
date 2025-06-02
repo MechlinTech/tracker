@@ -255,7 +255,7 @@ export default function HRManagement() {
                     required
                     value={newUser.email}
                     onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    className="input"
                   />
                 </div>
                 <div>
@@ -266,7 +266,7 @@ export default function HRManagement() {
                       required
                       value={newUser.password}
                       onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm pr-10"
+                      className="input pr-10"
                     />
                     <button
                       type="button"
@@ -291,7 +291,7 @@ export default function HRManagement() {
                     required
                     value={newUser.full_name}
                     onChange={(e) => setNewUser({ ...newUser, full_name: e.target.value })}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    className="input"
                   />
                 </div>
                 <div>
@@ -299,7 +299,7 @@ export default function HRManagement() {
                   <select
                     value={newUser.role}
                     onChange={(e) => setNewUser({ ...newUser, role: e.target.value as User['role'] })}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    className="input"
                   >
                     {USER_ROLES.map(role => (
                       <option key={role.value} value={role.value}>{role.label}</option>
@@ -311,7 +311,7 @@ export default function HRManagement() {
                   <select
                     value={newUser.manager_id || 'none'}
                     onChange={(e) => setNewUser({ ...newUser, manager_id: e.target.value === 'none' ? null : e.target.value })}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    className="input"
                   >
                     <option value="none">No Manager</option>
                     {managers.map((manager) => (
@@ -324,7 +324,7 @@ export default function HRManagement() {
                   <select
                     value={newUser.team}
                     onChange={(e) => setNewUser({ ...newUser, team: e.target.value })}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    className="input"
                   >
                     <option value="">Select Team</option>
                     {PREDEFINED_TEAMS.map((team) => (
@@ -337,7 +337,7 @@ export default function HRManagement() {
                       placeholder="Enter custom team name"
                       value={newUser.customTeam}
                       onChange={(e) => setNewUser({ ...newUser, customTeam: e.target.value })}
-                      className="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                      className="input"
                     />
                   )}
                 </div>
@@ -368,7 +368,7 @@ export default function HRManagement() {
               placeholder="Search users by name or team..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              className="input pl-10"
             />
             <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
           </div>
@@ -408,7 +408,7 @@ export default function HRManagement() {
                     <select
                       value={user.role}
                       onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                      className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                      className="input"
                     >
                       {USER_ROLES.map(role => (
                         <option key={role.value} value={role.value}>{role.label}</option>
@@ -419,7 +419,7 @@ export default function HRManagement() {
                     <select
                       value={user.manager_id || 'none'}
                       onChange={(e) => handleManagerChange(user.id, e.target.value)}
-                      className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                      className="input"
                     >
                       <option value="none">No Manager</option>
                       {managers.map((manager) => (
@@ -433,7 +433,7 @@ export default function HRManagement() {
                     <select
                       value={user.team || ''}
                       onChange={(e) => handleTeamChange(user.id, e.target.value)}
-                      className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                      className="input"
                     >
                       <option value="">Select Team</option>
                       {PREDEFINED_TEAMS.map((team) => (

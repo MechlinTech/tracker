@@ -68,6 +68,15 @@ export default function Reports() {
 
   const fetchTimeEntries = async () => {
     try {
+      let managedUserIds: string[] = [];
+      if (user?.role === 'manager') {
+        const { data: managedUsers } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('manager_id', user.id);
+        managedUserIds = managedUsers?.map(u => u.id) || [];
+      }
+
       let query = supabase
         .from('time_entries')
         .select(`
@@ -87,15 +96,8 @@ export default function Reports() {
         query = query.in('user_id', filters.users);
       }
 
-      // Apply role-based restrictions
       if (user?.role === 'manager') {
-        query = query.in(
-          'user_id',
-          supabase
-            .from('profiles')
-            .select('id')
-            .eq('manager_id', user.id)
-        );
+        query = query.in('user_id', managedUserIds);
       } else if (!['admin', 'hr', 'accountant'].includes(user?.role || '')) {
         query = query.eq('user_id', user?.id);
       }
@@ -257,7 +259,7 @@ export default function Reports() {
             </button>
             <button
               onClick={fetchTimeEntries}
-              className="btn-secondary"
+              className="btn-primary"
             >
               <Filter className="h-4 w-4 mr-2" />
               Apply Filters

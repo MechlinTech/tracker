@@ -31,10 +31,21 @@ interface LeaveRequest {
   }>;
 }
 
+interface LeaveType {
+  id: string;
+  name: string;
+  color: string;
+}
+
+interface Manager {
+  id: string;
+  full_name: string;
+}
+
 export default function LeaveManagement() {
   const user = useStore((state) => state.user);
-  const [leaveTypes, setLeaveTypes] = useState([]);
-  const [managers, setManagers] = useState([]);
+  const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
+  const [managers, setManagers] = useState<Manager[]>([]);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -260,7 +271,7 @@ export default function LeaveManagement() {
               <select
                 value={selectedType}
                 onChange={(e) => setSelectedType(e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2"
                 required
               >
                 <option value="">Select a type</option>
@@ -275,9 +286,41 @@ export default function LeaveManagement() {
               <Select
                 isMulti
                 options={managers.map(m => ({ value: m.id, label: m.full_name }))}
-                onChange={(selected) => setSelectedApprovers(selected.map(s => s.value))}
+                onChange={(selected) => setSelectedApprovers(selected ? selected.map(s => s.value) : [])}
                 className="mt-1"
                 required
+                styles={{
+                  control: (provided) => ({
+                    ...provided,
+                    padding: '0.125rem 0.75rem', // py-1 px-3 equivalent
+                    borderColor: '#D1D5DB', // border-gray-300 equivalent
+                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)', // shadow-sm equivalent
+                    '&:hover': {
+                      borderColor: '#9CA3AF', // hover:border-gray-400 equivalent
+                    },
+                    '&:focus-within': {
+                      borderColor: '#6366F1', // focus:border-indigo-500 equivalent
+                      boxShadow: '0 0 0 1px #6366F1', // focus:ring-indigo-500 equivalent
+                    },
+                  }),
+                  multiValue: (provided) => ({
+                    ...provided,
+                    backgroundColor: '#E0E7FF', // bg-indigo-100 equivalent
+                    color: '#4338CA', // text-indigo-800 equivalent
+                  }),
+                  multiValueLabel: (provided) => ({
+                    ...provided,
+                    color: '#4338CA', // text-indigo-800 equivalent
+                  }),
+                  multiValueRemove: (provided) => ({
+                    ...provided,
+                    color: '#4338CA', // text-indigo-800 equivalent
+                    '&:hover': {
+                      backgroundColor: '#C7D2FE', // hover:bg-indigo-200 equivalent
+                      color: '#3730A3', // hover:text-indigo-900 equivalent
+                    },
+                  }),
+                }}
               />
             </div>
 
@@ -287,7 +330,7 @@ export default function LeaveManagement() {
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2"
                 required
               />
             </div>
@@ -298,7 +341,7 @@ export default function LeaveManagement() {
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2"
                 required
               />
             </div>
@@ -309,7 +352,7 @@ export default function LeaveManagement() {
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 rows={3}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2"
                 required
               />
             </div>
@@ -335,7 +378,7 @@ export default function LeaveManagement() {
               <div className="text-center py-4 text-gray-500">No leave requests found</div>
             ) : (
               leaveRequests.map((request) => (
-                <div key={request.id} className="bg-white border rounded-lg shadow-sm p-6">
+                <div key={request.id} className="bg-white border border-gray-300 rounded-lg shadow-sm p-6">
                   <div className="flex justify-between items-start">
                     <div>
                       <h4 className="text-lg font-medium text-gray-900">
