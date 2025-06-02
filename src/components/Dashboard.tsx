@@ -46,20 +46,17 @@ export default function Dashboard() {
   };
 
   const calculateTodayHours = () => {
+    const today = new Date();
     const todayEntries = timeEntries.filter(entry => {
       const startDate = new Date(entry.start_time);
-      const today = new Date();
       return startDate.toDateString() === today.toDateString();
     });
 
-    const totalMs = todayEntries.reduce((total, entry) => {
-      const duration = new Date(entry.end_time || new Date()).getTime() - new Date(entry.start_time).getTime();
-      return total + duration;
-    }, 0);
+    const totalSeconds = todayEntries.reduce((total, entry) => total + (entry.duration || 0), 0);
 
-    const hours = Math.floor(totalMs / (1000 * 60 * 60));
-    const minutes = Math.floor((totalMs % (1000 * 60 * 60)) / (1000 * 60));
-    
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
   };
 
@@ -74,7 +71,7 @@ export default function Dashboard() {
               <div className="ml-4">
                 <h3 className="text-lg font-medium text-gray-900">Current Status</h3>
                 <p className="text-indigo-600 font-medium">
-                  {timeEntries[0]?.end_time === null ? 'Currently Working' : 'Not Tracking'}
+                  {timeEntries[0]?.description == 'Tracking started' ? 'Currently Working' : 'Not Tracking'}
                 </p>
               </div>
             </div>
