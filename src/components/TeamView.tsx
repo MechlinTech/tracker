@@ -14,6 +14,8 @@ interface TeamMember {
 interface TimeEntry {
   start_time: string;
   end_time: string | null;
+  duration: number;
+  description: string | null;
 }
 
 interface LeaveRequest {
@@ -85,6 +87,14 @@ function EmployeeDetailsModal({ isOpen, onClose, employee }: EmployeeDetailsModa
   if (!isOpen) return null;
 
   const calculateWorkHours = (entry: TimeEntry) => {
+    if (entry.duration) {
+      // Convert seconds to hours and minutes
+      const totalSeconds = entry.duration;
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      return `${hours}h ${minutes.toString().padStart(2, '0')}m`;
+    }
+    // Fallback for entries without duration (should not happen with the new schema)
     const start = new Date(entry.start_time).getTime();
     const end = entry.end_time ? new Date(entry.end_time).getTime() : Date.now();
     const hours = (end - start) / (1000 * 60 * 60);
@@ -163,7 +173,7 @@ function EmployeeDetailsModal({ isOpen, onClose, employee }: EmployeeDetailsModa
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Start Time</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">End Time</th>
+                      {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">End Time</th> */}
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hours</th>
                     </tr>
                   </thead>
@@ -176,9 +186,9 @@ function EmployeeDetailsModal({ isOpen, onClose, employee }: EmployeeDetailsModa
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {format(parseISO(entry.start_time), 'p')}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {/* <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {entry.end_time ? format(parseISO(entry.end_time), 'p') : 'Ongoing'}
-                        </td>
+                        </td> */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {calculateWorkHours(entry)}
                         </td>
@@ -304,13 +314,20 @@ export default function TeamView() {
 
             return {
               ...member,
-              current_status: latestEntry && !latestEntry.end_time ? 'online' : 'offline',
+              current_status: latestEntry?.description === 'Tracking started' ? 'online' : 'offline',
               latest_activity: latestEntry?.start_time,
             };
           })
         );
 
-        setTeamMembers(membersWithStatus);
+        // Sort members: online first, then offline
+        const sortedMembers = membersWithStatus.sort((a, b) => {
+          if (a.current_status === 'online' && b.current_status === 'offline') return -1;
+          if (a.current_status === 'offline' && b.current_status === 'online') return 1;
+          return 0;
+        });
+
+        setTeamMembers(sortedMembers);
       } catch (error) {
         console.error('Error fetching team members:', error);
       } finally {
