@@ -46,10 +46,24 @@ export default function Dashboard() {
   };
 
   const calculateTodayHours = () => {
+    const now = new Date();
     const today = new Date();
+    
+    // If current time is before 5 AM, consider entries from previous day after 5 AM
+    if (now.getHours() < 5) {
+      today.setDate(today.getDate() - 1);
+    }
+    
     const todayEntries = timeEntries.filter(entry => {
       const startDate = new Date(entry.start_time);
-      return startDate.toDateString() === today.toDateString();
+      const entryDate = new Date(startDate);
+      
+      // If entry is before 5 AM, it belongs to previous day
+      if (startDate.getHours() < 5) {
+        entryDate.setDate(entryDate.getDate() - 1);
+      }
+      
+      return entryDate.toDateString() === today.toDateString();
     });
 
     const totalSeconds = todayEntries.reduce((total, entry) => total + (entry.duration || 0), 0);
