@@ -44,6 +44,8 @@ export default function HRManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddUser, setShowAddUser] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const [newUser, setNewUser] = useState<NewUser>({
     email: '',
     password: '',
@@ -197,6 +199,30 @@ export default function HRManagement() {
     user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.team?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentUsers = filteredUsers.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  function getPaginationRange(current: number, total: number, delta = 2) {
+    const range = [];
+    const left = Math.max(2, current - delta);
+    const right = Math.min(total - 1, current + delta);
+
+    range.push(1);
+    if (left > 2) range.push('...');
+    for (let i = left; i <= right; i++) range.push(i);
+    if (right < total - 1) range.push('...');
+    if (total > 1) range.push(total);
+
+    return range;
+  }
 
   if (loading) {
     return (
@@ -393,7 +419,7 @@ export default function HRManagement() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredUsers.map((user) => (
+              {currentUsers.map((user) => (
                 <tr key={user.id}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
@@ -446,6 +472,70 @@ export default function HRManagement() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200 sm:px-6">
+            <div className="flex justify-between flex-1 sm:hidden">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="relative inline-flex items-center px-4 py-2 ml-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+            <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm text-gray-700">
+                  Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+                  <span className="font-medium">{Math.min(endIndex, filteredUsers.length)}</span> of{' '}
+                  <span className="font-medium">{filteredUsers.length}</span> results
+                </p>
+              </div>
+              <div>
+                <nav className="inline-flex -space-x-px rounded-md shadow-sm isolate" aria-label="Pagination">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="relative inline-flex items-center px-2 py-2 text-gray-400 rounded-l-md border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  {getPaginationRange(currentPage, totalPages).map((page, idx) =>
+                    page === '...'
+                      ? <span key={idx} className="px-2 py-2 text-gray-400">...</span>
+                      : <button
+                          key={page}
+                          onClick={() => handlePageChange(page as number)}
+                          className={`relative inline-flex items-center px-4 py-2 text-sm font-medium ${
+                            currentPage === page
+                              ? 'z-10 bg-indigo-600 text-white'
+                              : 'text-gray-900 bg-white hover:bg-gray-50'
+                          } border border-gray-300`}
+                        >
+                          {page}
+                        </button>
+                  )}
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="relative inline-flex items-center px-2 py-2 text-gray-400 rounded-r-md border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </nav>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
