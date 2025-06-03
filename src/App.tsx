@@ -17,6 +17,7 @@ const HRManagement = lazy(() => import('./components/HRManagement'));
 const LeaveManagement = lazy(() => import('./components/LeaveManagement'));
 const Reports = lazy(() => import('./components/Reports'));
 const PasswordChangeModal = lazy(() => import('./components/PasswordChangeModal'));
+const Profile = lazy(() => import('./components/Profile'));
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const user = useStore((state) => state.user);
@@ -146,6 +147,13 @@ export default function App() {
             <PrivateRoute>
               <Layout>
                 <Reports />
+              </Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/profile" element={
+            <PrivateRoute>
+              <Layout>
+                <Profile />
               </Layout>
             </PrivateRoute>
           } />

@@ -24,12 +24,18 @@ export default defineConfig({
     sourcemap: false
   },
   server: {
+    host: true,
+    port: 5173,
+    strictPort: true,
     hmr: {
-      overlay: false
+      overlay: false,
+      clientPort: 443,
+      host: 'tracker.mechlintech.com'
     },
     watch: {
       usePolling: true
-    }
+    },
+    allowedHosts: ['tracker.mechlintech.com', 'localhost', '127.0.0.1', 'trackerdev.mechlintech.com','trackerprod.mechlintech.com',]
   },
   optimizeDeps: {
     include: [

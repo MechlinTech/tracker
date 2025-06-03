@@ -31,13 +31,26 @@ interface LeaveRequest {
   }>;
 }
 
+interface LeaveType {
+  id: string;
+  name: string;
+  color: string;
+}
+
+interface Manager {
+  id: string;
+  full_name: string;
+}
+
 export default function LeaveManagement() {
   const user = useStore((state) => state.user);
-  const [leaveTypes, setLeaveTypes] = useState([]);
-  const [managers, setManagers] = useState([]);
+  const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
+  const [managers, setManagers] = useState<Manager[]>([]);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   
   // Form state
   const [selectedType, setSelectedType] = useState('');
@@ -233,7 +246,30 @@ export default function LeaveManagement() {
     }
   };
 
-  // Rest of the component (JSX) remains the same...
+  // Calculate pagination
+  const totalPages = Math.ceil(leaveRequests.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentRequests = leaveRequests.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  function getPaginationRange(current: number, total: number, delta = 2) {
+    const range = [];
+    const left = Math.max(2, current - delta);
+    const right = Math.min(total - 1, current + delta);
+
+    range.push(1);
+    if (left > 2) range.push('...');
+    for (let i = left; i <= right; i++) range.push(i);
+    if (right < total - 1) range.push('...');
+    if (total > 1) range.push(total);
+
+    return range;
+  }
+
   return (
     <div className="space-y-6">
       <div className="bg-white shadow rounded-lg p-6">
@@ -260,7 +296,7 @@ export default function LeaveManagement() {
               <select
                 value={selectedType}
                 onChange={(e) => setSelectedType(e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2"
                 required
               >
                 <option value="">Select a type</option>
@@ -275,9 +311,41 @@ export default function LeaveManagement() {
               <Select
                 isMulti
                 options={managers.map(m => ({ value: m.id, label: m.full_name }))}
-                onChange={(selected) => setSelectedApprovers(selected.map(s => s.value))}
+                onChange={(selected) => setSelectedApprovers(selected ? selected.map(s => s.value) : [])}
                 className="mt-1"
                 required
+                styles={{
+                  control: (provided) => ({
+                    ...provided,
+                    padding: '0.125rem 0.75rem', // py-1 px-3 equivalent
+                    borderColor: '#D1D5DB', // border-gray-300 equivalent
+                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)', // shadow-sm equivalent
+                    '&:hover': {
+                      borderColor: '#9CA3AF', // hover:border-gray-400 equivalent
+                    },
+                    '&:focus-within': {
+                      borderColor: '#6366F1', // focus:border-indigo-500 equivalent
+                      boxShadow: '0 0 0 1px #6366F1', // focus:ring-indigo-500 equivalent
+                    },
+                  }),
+                  multiValue: (provided) => ({
+                    ...provided,
+                    backgroundColor: '#E0E7FF', // bg-indigo-100 equivalent
+                    color: '#4338CA', // text-indigo-800 equivalent
+                  }),
+                  multiValueLabel: (provided) => ({
+                    ...provided,
+                    color: '#4338CA', // text-indigo-800 equivalent
+                  }),
+                  multiValueRemove: (provided) => ({
+                    ...provided,
+                    color: '#4338CA', // text-indigo-800 equivalent
+                    '&:hover': {
+                      backgroundColor: '#C7D2FE', // hover:bg-indigo-200 equivalent
+                      color: '#3730A3', // hover:text-indigo-900 equivalent
+                    },
+                  }),
+                }}
               />
             </div>
 
@@ -287,7 +355,7 @@ export default function LeaveManagement() {
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2"
                 required
               />
             </div>
@@ -298,7 +366,7 @@ export default function LeaveManagement() {
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2"
                 required
               />
             </div>
@@ -309,7 +377,7 @@ export default function LeaveManagement() {
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 rows={3}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2"
                 required
               />
             </div>
@@ -334,8 +402,8 @@ export default function LeaveManagement() {
             ) : leaveRequests.length === 0 ? (
               <div className="text-center py-4 text-gray-500">No leave requests found</div>
             ) : (
-              leaveRequests.map((request) => (
-                <div key={request.id} className="bg-white border rounded-lg shadow-sm p-6">
+              currentRequests.map((request) => (
+                <div key={request.id} className="bg-white border border-gray-300 rounded-lg shadow-sm p-6">
                   <div className="flex justify-between items-start">
                     <div>
                       <h4 className="text-lg font-medium text-gray-900">
@@ -412,6 +480,70 @@ export default function LeaveManagement() {
                   </div>
                 </div>
               ))
+            )}
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200 sm:px-6">
+                <div className="flex justify-between flex-1 sm:hidden">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="relative inline-flex items-center px-4 py-2 ml-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+                <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm text-gray-700">
+                      Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+                      <span className="font-medium">{Math.min(endIndex, leaveRequests.length)}</span> of{' '}
+                      <span className="font-medium">{leaveRequests.length}</span> results
+                    </p>
+                  </div>
+                  <div>
+                    <nav className="inline-flex -space-x-px rounded-md shadow-sm isolate" aria-label="Pagination">
+                      <button
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className="relative inline-flex items-center px-2 py-2 text-gray-400 rounded-l-md border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Previous
+                      </button>
+                      {getPaginationRange(currentPage, totalPages).map((page, idx) =>
+                        page === '...'
+                          ? <span key={idx} className="px-2 py-2 text-gray-400">...</span>
+                          : <button
+                              key={page}
+                              onClick={() => handlePageChange(page as number)}
+                              className={`relative inline-flex items-center px-4 py-2 text-sm font-medium ${
+                                currentPage === page
+                                  ? 'z-10 bg-indigo-600 text-white'
+                                  : 'text-gray-900 bg-white hover:bg-gray-50'
+                              } border border-gray-300`}
+                            >
+                              {page}
+                            </button>
+                      )}
+                      <button
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                        className="relative inline-flex items-center px-2 py-2 text-gray-400 rounded-r-md border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Next
+                      </button>
+                    </nav>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         </div>

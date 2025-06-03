@@ -1,45 +1,99 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useStore } from '../lib/store';
 import { Clock, Download, Upload } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import semverGt from 'semver/functions/gt';
 
 export default function TimeTracker() {
   const user = useStore((state) => state.user);
   const [error, setError] = useState<string | null>(null);
+  const [latestVersion, setLatestVersion] = useState<string | null>(null);
+  const [latestFileUrl, setLatestFileUrl] = useState<string | null>(null);
+  const [justUploaded, setJustUploaded] = useState(false);
+
+  // Helper to extract version from filename
+  function extractVersion(filename: string) {
+    const match = filename.match(/v(\d+\.\d+\.\d+)/i);
+    return match ? match[1] : null;
+  }
+
+  // Fetch latest version from Supabase storage
+  useEffect(() => {
+    const fetchLatestVersion = async () => {
+      const { data, error } = await supabase.storage
+        .from('tracker-application')
+        .list('', { limit: 100 });
+      if (error) {
+        setError('Failed to fetch versions');
+        return;
+      }
+      // Find all .exe files with version in name
+      const exeFiles = (data || []).filter(f => f.name.endsWith('.exe') && extractVersion(f.name));
+      if (exeFiles.length === 0) return;
+      // Find the latest version
+      let latest = exeFiles[0];
+      for (const file of exeFiles) {
+        if (semverGt(extractVersion(file.name)!, extractVersion(latest.name)!)) {
+          latest = file;
+        }
+      }
+      setLatestVersion(extractVersion(latest.name));
+      setLatestFileUrl(
+        `${supabase.storage.from('tracker-application').getPublicUrl(latest.name).data.publicUrl}`
+      );
+    };
+    fetchLatestVersion();
+  }, [justUploaded]);
 
   const handleDownloadApp = () => {
-    const os = window.navigator.platform.toLowerCase();
-    let downloadUrl = '';
-    
-    if (os.includes('win')) {
-      downloadUrl = 'https://yxkniwzsinqyjdqqzyjs.supabase.co/storage/v1/object/public/tracker-application//Tracker%20Application.exe';
-    } else if (os.includes('mac')) {
-      downloadUrl = '/downloads/TimeTracker.dmg';
-    } else if (os.includes('linux')) {
-      downloadUrl = '/downloads/TimeTracker.AppImage';
-    }
-
-    if (downloadUrl) {
-      window.location.href = downloadUrl;
+    if (latestFileUrl) {
+      window.location.href = latestFileUrl;
+    } else {
+      setError('No version available for download');
     }
   };
 
   const handleUploadApp = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
+    let version = prompt('Enter version (e.g. 1.0.0):');
+    if (!version || !/^\d+\.\d+\.\d+$/.test(version)) {
+      setError('Invalid version format. Use x.y.z');
+      return;
+    }
+    const filename = `Tracker Application v${version}.exe`;
     try {
+      // Check if this version already exists
+      const { data: existing } = await supabase.storage.from('tracker-application').list('');
+      if (existing && existing.some(f => f.name === filename)) {
+        setError('This version already exists.');
+        return;
+      }
       const { error } = await supabase.storage
         .from('tracker-application')
-        .upload(`Tracker Application.exe`, file);
-
+        .upload(filename, file);
       if (error) throw error;
+      setJustUploaded(v => !v);
+      setError(null);
       alert('Application uploaded successfully');
+      // Notify users (web notification)
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('New Tracker Version', {
+          body: `Version ${version} is now available for download.`
+        });
+      }
     } catch (error) {
       console.error('Error uploading app:', error);
       setError('Failed to upload application');
     }
   };
+
+  // Ask for notification permission on mount
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission !== 'granted') {
+      Notification.requestPermission();
+    }
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -77,6 +131,12 @@ export default function TimeTracker() {
             )}
           </div>
         </div>
+
+        {latestVersion && (
+          <div className="mb-4 bg-green-50 border border-green-200 rounded-md p-4">
+            <span className="text-green-700">Latest Version: v{latestVersion}</span>
+          </div>
+        )}
 
         {error && (
           <div className="mb-4 bg-red-50 border border-red-200 rounded-md p-4">

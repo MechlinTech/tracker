@@ -27,6 +27,8 @@ export default function Reports() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [users, setUsers] = useState<Array<{ value: string; label: string }>>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const [filters, setFilters] = useState<FilterOptions>({
     users: [],
     dateRange: {
@@ -68,6 +70,15 @@ export default function Reports() {
 
   const fetchTimeEntries = async () => {
     try {
+      let managedUserIds: string[] = [];
+      if (user?.role === 'manager') {
+        const { data: managedUsers } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('manager_id', user.id);
+        managedUserIds = managedUsers?.map(u => u.id) || [];
+      }
+
       let query = supabase
         .from('time_entries')
         .select(`
@@ -87,15 +98,8 @@ export default function Reports() {
         query = query.in('user_id', filters.users);
       }
 
-      // Apply role-based restrictions
       if (user?.role === 'manager') {
-        query = query.in(
-          'user_id',
-          supabase
-            .from('profiles')
-            .select('id')
-            .eq('manager_id', user.id)
-        );
+        query = query.in('user_id', managedUserIds);
       } else if (!['admin', 'hr', 'accountant'].includes(user?.role || '')) {
         query = query.eq('user_id', user?.id);
       }
@@ -169,6 +173,30 @@ export default function Reports() {
     });
     fetchTimeEntries();
   };
+
+  // Calculate pagination
+  const totalPages = Math.ceil(timeEntries.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentEntries = timeEntries.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  function getPaginationRange(current: number, total: number, delta = 2) {
+    const range = [];
+    const left = Math.max(2, current - delta);
+    const right = Math.min(total - 1, current + delta);
+
+    range.push(1);
+    if (left > 2) range.push('...');
+    for (let i = left; i <= right; i++) range.push(i);
+    if (right < total - 1) range.push('...');
+    if (total > 1) range.push(total);
+
+    return range;
+  }
 
   return (
     <div className="space-y-6">
@@ -257,7 +285,7 @@ export default function Reports() {
             </button>
             <button
               onClick={fetchTimeEntries}
-              className="btn-secondary"
+              className="btn-primary"
             >
               <Filter className="h-4 w-4 mr-2" />
               Apply Filters
@@ -281,7 +309,7 @@ export default function Reports() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {timeEntries.map((entry, index) => (
+              {currentEntries.map((entry, index) => (
                 <tr key={`${entry.date}-${entry.user_id}-${index}`}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {format(parseISO(entry.date), 'PP')}
@@ -301,6 +329,70 @@ export default function Reports() {
               ))}
             </tbody>
           </table>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200 sm:px-6">
+              <div className="flex justify-between flex-1 sm:hidden">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="relative inline-flex items-center px-4 py-2 ml-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+              <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm text-gray-700">
+                    Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+                    <span className="font-medium">{Math.min(endIndex, timeEntries.length)}</span> of{' '}
+                    <span className="font-medium">{timeEntries.length}</span> results
+                  </p>
+                </div>
+                <div>
+                  <nav className="inline-flex -space-x-px rounded-md shadow-sm isolate" aria-label="Pagination">
+                    <button
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="relative inline-flex items-center px-2 py-2 text-gray-400 rounded-l-md border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    {getPaginationRange(currentPage, totalPages).map((page, idx) =>
+                      page === '...'
+                        ? <span key={idx} className="px-2 py-2 text-gray-400">...</span>
+                        : <button
+                            key={page}
+                            onClick={() => handlePageChange(page as number)}
+                            className={`relative inline-flex items-center px-4 py-2 text-sm font-medium ${
+                              currentPage === page
+                                ? 'z-10 bg-indigo-600 text-white'
+                                : 'text-gray-900 bg-white hover:bg-gray-50'
+                            } border border-gray-300`}
+                          >
+                            {page}
+                          </button>
+                    )}
+                    <button
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="relative inline-flex items-center px-2 py-2 text-gray-400 rounded-r-md border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </nav>
+                </div>
+              </div>
+            </div>
+          )}
 
           {loading && (
             <div className="text-center py-4">
