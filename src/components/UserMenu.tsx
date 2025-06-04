@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Dispatch, SetStateAction } from 'react';
 import { supabase } from '../lib/supabase';
-import { User, LogOut, Settings } from 'lucide-react';
+import { User, LogOut, Settings, Key } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface UserMenuProps {
   className?: string;
+  setIsPasswordModalOpen: Dispatch<SetStateAction<boolean>>;
 }
 
-export default function UserMenu({ className }: UserMenuProps) {
+export default function UserMenu({ className, setIsPasswordModalOpen }: UserMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [userName, setUserName] = useState('');
   const navigate = useNavigate();
@@ -66,28 +67,17 @@ export default function UserMenu({ className }: UserMenuProps) {
           />
           <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
             <div className="py-1" role="menu" aria-orientation="vertical">
-              {/* <button
+              <button
                 onClick={() => {
-                  navigate('/profile');
+                  setIsPasswordModalOpen(true);
                   setIsOpen(false);
                 }}
                 className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                 role="menuitem"
               >
-                <User className="h-4 w-4 mr-3" />
-                Profile
-              </button> */}
-              {/* <button
-                onClick={() => {
-                  navigate('/settings');
-                  setIsOpen(false);
-                }}
-                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                role="menuitem"
-              >
-                <Settings className="h-4 w-4 mr-3" />
-                Settings
-              </button> */}
+                <Key className="h-4 w-4 mr-3" />
+                Change Password
+              </button>
               <button
                 onClick={handleSignOut}
                 className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100"

@@ -15,12 +15,14 @@ import {
   User
 } from 'lucide-react';
 import UserMenu from './UserMenu';
+import PasswordChangeModal from './PasswordChangeModal';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
   const user = useStore((state) => state.user);
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = React.useState(false);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -84,7 +86,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <LogOut className="h-4 w-4" />
                 <span className="hidden sm:block ml-2">Logout</span>
               </button> */}
-              <UserMenu className="hidden lg:block"/>
+              <UserMenu className="hidden lg:block" setIsPasswordModalOpen={setIsPasswordModalOpen} />
               <button
                 className="lg:hidden btn-ghost p-2"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -135,6 +137,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <main className="flex-grow container mx-auto px-2 sm:px-3 lg:px-4 py-8">
         {children}
       </main>
+
+      <PasswordChangeModal 
+        isOpen={isPasswordModalOpen}
+        onClose={() => setIsPasswordModalOpen(false)}
+      />
 
       {/* <footer className="mt-auto glass-panel border-t py-4">
         <div className="max-w-7xl mx-auto px-2 sm:px-3 lg:px-4">
