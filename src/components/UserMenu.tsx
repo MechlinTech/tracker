@@ -66,7 +66,7 @@ export default function UserMenu({ className }: UserMenuProps) {
           />
           <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
             <div className="py-1" role="menu" aria-orientation="vertical">
-              <button
+              {/* <button
                 onClick={() => {
                   navigate('/profile');
                   setIsOpen(false);
@@ -76,7 +76,7 @@ export default function UserMenu({ className }: UserMenuProps) {
               >
                 <User className="h-4 w-4 mr-3" />
                 Profile
-              </button>
+              </button> */}
               {/* <button
                 onClick={() => {
                   navigate('/settings');
