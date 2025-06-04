@@ -12,7 +12,8 @@ import {
   FileText,
   ChevronDown,
   Menu,
-  User
+  User,
+  Key
 } from 'lucide-react';
 import UserMenu from './UserMenu';
 import PasswordChangeModal from './PasswordChangeModal';
@@ -114,14 +115,21 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   </Link>
                 )
               )}
-              <Link
+              {/* <Link
                 to="/profile"
                 className={`nav-link ${isActive('/profile') ? 'nav-link-active' : 'nav-link-inactive'}`}
                 onClick={() => setMobileMenuOpen(false)}
               >
                 <User className="h-4 w-4 mr-2" />
                 Profile
-              </Link>
+              </Link> */}
+              <button
+                onClick={() => { setIsPasswordModalOpen(true); setMobileMenuOpen(false); }}
+                className="nav-link nav-link-inactive"
+              >
+                <Key className="h-4 w-4 mr-2" />
+                Change Password
+              </button>
               <button
                 onClick={() => { handleLogout(); setMobileMenuOpen(false); }}
                 className="nav-link nav-link-inactive text-red-600"
