@@ -29,7 +29,6 @@ export default defineConfig({
     strictPort: true,
     hmr: {
       overlay: false,
-      protocol: 'wss',
       clientPort: 443,
       // host: 'tracker.mechlintech.com'
     },
