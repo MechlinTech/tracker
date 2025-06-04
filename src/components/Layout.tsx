@@ -136,7 +136,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
-      <footer className="mt-auto glass-panel border-t py-4">
+      {/* <footer className="mt-auto glass-panel border-t py-4">
         <div className="max-w-7xl mx-auto px-2 sm:px-3 lg:px-4">
           <div className="flex justify-between items-center">
             <p className="text-sm text-surface-500">
@@ -149,7 +149,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         </div>
-      </footer>
+      </footer> */}
     </div>
   );
 }

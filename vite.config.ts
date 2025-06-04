@@ -30,7 +30,7 @@ export default defineConfig({
     hmr: {
       overlay: false,
       clientPort: 443,
-      // host: 'tracker.mechlintech.com'
+      host: 'trackerdev.mechlintech.com'
     },
     watch: {
       usePolling: true
