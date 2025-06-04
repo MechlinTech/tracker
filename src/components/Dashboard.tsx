@@ -45,6 +45,14 @@ export default function Dashboard() {
     return `${hours.toString().padStart(2, '0')}h :${minutes.toString().padStart(2, '0')}m`;
   };
 
+  const formatUTCDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const day = date.getUTCDate();
+    const month = date.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' });
+    const year = date.getUTCFullYear();
+    return `${day} ${month} ${year}`;
+  };
+
   const calculateTodayHours = () => {
     const now = new Date();
     const today = new Date();
@@ -117,7 +125,7 @@ export default function Dashboard() {
                 <div className="flex justify-between items-start">
                   <div>
                     <p className="text-sm font-medium text-gray-900">
-                      {format(parseISO(entry.start_time), 'PPP')}
+                      {formatUTCDate(entry.start_time)}
                     </p>
                     <p className="text-sm text-gray-500 pt-0.5">
                       Start Time: {format(parseISO(entry.start_time), 'p')}
