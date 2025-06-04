@@ -79,7 +79,7 @@ export default function Dashboard() {
       <div className="bg-white shadow rounded-lg p-6">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">Welcome back, {user?.full_name}</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-indigo-50 p-6 rounded-lg">
+          {/* <div className="bg-indigo-50 p-6 rounded-lg">
             <div className="flex items-center">
               <Clock className="h-8 w-8 text-indigo-600" />
               <div className="ml-4">
@@ -89,7 +89,7 @@ export default function Dashboard() {
                 </p>
               </div>
             </div>
-          </div>
+          </div> */}
           <div className="bg-green-50 p-6 rounded-lg">
             <div className="flex items-center">
               <Calendar className="h-8 w-8 text-green-600" />
@@ -129,7 +129,8 @@ export default function Dashboard() {
                 </div>
                 <div className="flex justify-between items-start">
                   {entry.description && (
-                    <p className="mt-2 text-sm text-gray-500">{entry.description}</p>
+                    // <p className="mt-2 text-sm text-gray-500">{entry.description}</p>
+                    <p className="mt-2 text-sm text-gray-500"></p>
                   )}
                   <div className="text-xs text-gray-500 text-center mt-1">
                     Total Duration
