@@ -1,0 +1,18 @@
+version: "3.8"
+
+services:
+  tracker:
+    image: time-tracker
+    container_name: tracker
+    build:
+      context: .
+      dockerfile: Dockerfile
+    working_dir: /app
+    ports:
+      - "5174:5173"
+    environment:
+      VITE_APP_ENV: development
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: ["npm", "run", "dev", "--", "--host"]
