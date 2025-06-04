@@ -35,6 +35,8 @@ export default function Screenshots() {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 9; // 3x3 grid
   const [filters, setFilters] = useState<FilterOptions>({
     dateRange: {
       start: '',
@@ -133,12 +135,6 @@ export default function Screenshots() {
       });
     }
 
-    // let matchesTimeRange = true;
-    // if (filters.timeRange.start && filters.timeRange.end) {
-    //   const time = format(screenshotDate, 'HH:mm');
-    //   matchesTimeRange = time >= filters.timeRange.start && time <= filters.timeRange.end;
-    // }
-
     let matchesUserName = true;
     if (filters.userName) {
       matchesUserName = screenshot.user.full_name.toLowerCase().includes(filters.userName.toLowerCase());
@@ -146,6 +142,30 @@ export default function Screenshots() {
 
     return matchesSearch && matchesDateRange && matchesUserName;
   });
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredScreenshots.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentScreenshots = filteredScreenshots.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  function getPaginationRange(current: number, total: number, delta = 2) {
+    const range = [];
+    const left = Math.max(2, current - delta);
+    const right = Math.min(total - 1, current + delta);
+
+    range.push(1);
+    if (left > 2) range.push('...');
+    for (let i = left; i <= right; i++) range.push(i);
+    if (right < total - 1) range.push('...');
+    if (total > 1) range.push(total);
+
+    return range;
+  }
 
   return (
     <div className="space-y-6">
@@ -232,7 +252,7 @@ export default function Screenshots() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredScreenshots.map((screenshot) => (
+            {currentScreenshots.map((screenshot) => (
               <div key={screenshot.id} className="bg-gray-50 rounded-lg overflow-hidden shadow-sm">
                 {screenshot.url ? (
                   <img
@@ -279,6 +299,70 @@ export default function Screenshots() {
             <p className="mt-1 text-sm text-gray-500">
               {screenshots.length === 0 ? 'No screenshots have been captured yet.' : 'No screenshots match your search criteria.'}
             </p>
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200 sm:px-6 mt-6">
+            <div className="flex justify-between flex-1 sm:hidden">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="relative inline-flex items-center px-4 py-2 ml-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+            <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm text-gray-700">
+                  Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+                  <span className="font-medium">{Math.min(endIndex, filteredScreenshots.length)}</span> of{' '}
+                  <span className="font-medium">{filteredScreenshots.length}</span> results
+                </p>
+              </div>
+              <div>
+                <nav className="inline-flex -space-x-px rounded-md shadow-sm isolate" aria-label="Pagination">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="relative inline-flex items-center px-2 py-2 text-gray-400 rounded-l-md border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  {getPaginationRange(currentPage, totalPages).map((page, idx) =>
+                    page === '...'
+                      ? <span key={idx} className="px-2 py-2 text-gray-400">...</span>
+                      : <button
+                          key={page}
+                          onClick={() => handlePageChange(page as number)}
+                          className={`relative inline-flex items-center px-4 py-2 text-sm font-medium ${
+                            currentPage === page
+                              ? 'z-10 bg-indigo-600 text-white'
+                              : 'text-gray-900 bg-white hover:bg-gray-50'
+                          } border border-gray-300`}
+                        >
+                          {page}
+                        </button>
+                  )}
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="relative inline-flex items-center px-2 py-2 text-gray-400 rounded-r-md border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </nav>
+              </div>
+            </div>
           </div>
         )}
       </div>

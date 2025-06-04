@@ -34,7 +34,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { name: 'Time Tracker', path: '/time-tracker', icon: Clock },
     { name: 'Team', path: '/team', icon: Users, show: user?.role === 'manager' || user?.role === 'admin' },
     { name: 'Screenshots', path: '/screenshots', icon: Camera, show: user?.role !== 'hr' },
-    { name: 'Leave', path: '/leave', icon: Calendar },
+    // { name: 'Leave', path: '/leave', icon: Calendar },
     { name: 'Reports', path: '/reports', icon: FileText },
     { name: 'HR Management', path: '/hr', icon: Users, show: user?.role === 'hr' },
     { name: 'Admin', path: '/admin', icon: Settings, show: user?.role === 'admin' }
