@@ -14,8 +14,8 @@ if (docker ps -a --filter "name=$prodContainer" | Select-String $prodContainer) 
     docker rm $prodContainer
 }
 
-# Run the production container
+# Run the production container with a restart policy
 Write-Host "Running the production container..."
-docker run -d -p 5800:5173 --name $prodContainer $prodImage
+docker run -d -p 5800:5173 --name $prodContainer --restart always $prodImage
 
 Write-Host "Production deployment complete!"
