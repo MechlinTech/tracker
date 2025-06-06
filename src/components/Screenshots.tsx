@@ -176,7 +176,7 @@ export default function Screenshots() {
             <h2 className="ml-3 text-2xl font-bold text-gray-900">Screenshots</h2>
           </div>
           <div className="flex space-x-4">
-            <div className="relative">
+            {/* <div className="relative">
               <input
                 type="text"
                 placeholder="Search screenshots..."
@@ -185,7 +185,7 @@ export default function Screenshots() {
                 className="input pl-10"
               />
               <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-            </div>
+            </div> */}
             <button
               onClick={() => setShowFilters(!showFilters)}
               className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
@@ -216,6 +216,7 @@ export default function Screenshots() {
                       ...filters,
                       dateRange: { ...filters.dateRange, start: e.target.value }
                     })}
+                    max={new Date().toISOString().split('T')[0]}
                     className="input"
                   />
                   <input
@@ -225,23 +226,26 @@ export default function Screenshots() {
                       ...filters,
                       dateRange: { ...filters.dateRange, end: e.target.value }
                     })}
+                    max={new Date().toISOString().split('T')[0]}
                     className="input"
                   />
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">User Name</label>
-                <input
-                  type="text"
-                  placeholder="Filter by user name..."
-                  value={filters.userName}
-                  onChange={(e) => setFilters({
-                    ...filters,
-                    userName: e.target.value
-                  })}
-                  className="input"
-                />
-              </div>
+              {(user?.role === 'admin' || user?.role === 'manager' || user?.role === 'hr') && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">User Name</label>
+                  <input
+                    type="text"
+                    placeholder="Filter by user name..."
+                    value={filters.userName}
+                    onChange={(e) => setFilters({
+                      ...filters,
+                      userName: e.target.value
+                    })}
+                    className="input"
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}

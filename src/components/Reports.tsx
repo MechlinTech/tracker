@@ -256,6 +256,7 @@ export default function Reports() {
                       dateRange: { ...filters.dateRange, start: e.target.value }
                     });
                   }}
+                  max={new Date().toISOString().split('T')[0]}
                   className="input"
                 />
                 <input
@@ -271,6 +272,7 @@ export default function Reports() {
                       dateRange: { ...filters.dateRange, end: e.target.value }
                     });
                   }}
+                  max={new Date().toISOString().split('T')[0]}
                   className="input"
                 />
               </div>
