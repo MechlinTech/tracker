@@ -5,6 +5,7 @@ import { Download, Search, Filter } from 'lucide-react';
 import Select from 'react-select';
 import { format, parseISO, startOfDay, endOfDay } from 'date-fns';
 import * as XLSX from 'xlsx';
+import { Pagination } from '@mui/material';
 
 interface DailyTimeEntry {
   date: string;
@@ -184,20 +185,6 @@ export default function Reports() {
     setCurrentPage(page);
   };
 
-  function getPaginationRange(current: number, total: number, delta = 2) {
-    const range = [];
-    const left = Math.max(2, current - delta);
-    const right = Math.min(total - 1, current + delta);
-
-    range.push(1);
-    if (left > 2) range.push('...');
-    for (let i = left; i <= right; i++) range.push(i);
-    if (right < total - 1) range.push('...');
-    if (total > 1) range.push(total);
-
-    return range;
-  }
-
   return (
     <div className="space-y-6">
       <div className="bg-white shadow rounded-lg p-6">
@@ -256,6 +243,7 @@ export default function Reports() {
                       dateRange: { ...filters.dateRange, start: e.target.value }
                     });
                   }}
+                  max={new Date().toISOString().split('T')[0]}
                   className="input"
                 />
                 <input
@@ -271,6 +259,7 @@ export default function Reports() {
                       dateRange: { ...filters.dateRange, end: e.target.value }
                     });
                   }}
+                  max={new Date().toISOString().split('T')[0]}
                   className="input"
                 />
               </div>
@@ -330,67 +319,17 @@ export default function Reports() {
             </tbody>
           </table>
 
-          {/* Pagination Controls */}
+          {/* Replace the old pagination with MUI Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200 sm:px-6">
-              <div className="flex justify-between flex-1 sm:hidden">
-                <button
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  className="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Previous
-                </button>
-                <button
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                  className="relative inline-flex items-center px-4 py-2 ml-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Next
-                </button>
-              </div>
-              <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm text-gray-700">
-                    Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
-                    <span className="font-medium">{Math.min(endIndex, timeEntries.length)}</span> of{' '}
-                    <span className="font-medium">{timeEntries.length}</span> results
-                  </p>
-                </div>
-                <div>
-                  <nav className="inline-flex -space-x-px rounded-md shadow-sm isolate" aria-label="Pagination">
-                    <button
-                      onClick={() => handlePageChange(currentPage - 1)}
-                      disabled={currentPage === 1}
-                      className="relative inline-flex items-center px-2 py-2 text-gray-400 rounded-l-md border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Previous
-                    </button>
-                    {getPaginationRange(currentPage, totalPages).map((page, idx) =>
-                      page === '...'
-                        ? <span key={idx} className="px-2 py-2 text-gray-400">...</span>
-                        : <button
-                            key={page}
-                            onClick={() => handlePageChange(page as number)}
-                            className={`relative inline-flex items-center px-4 py-2 text-sm font-medium ${
-                              currentPage === page
-                                ? 'z-10 bg-indigo-600 text-white'
-                                : 'text-gray-900 bg-white hover:bg-gray-50'
-                            } border border-gray-300`}
-                          >
-                            {page}
-                          </button>
-                    )}
-                    <button
-                      onClick={() => handlePageChange(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                      className="relative inline-flex items-center px-2 py-2 text-gray-400 rounded-r-md border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Next
-                    </button>
-                  </nav>
-                </div>
-              </div>
+            <div className="flex items-center justify-center px-4 py-3 bg-white border-t border-gray-200">
+              <Pagination 
+                count={totalPages}
+                page={currentPage}
+                onChange={(_, page) => handlePageChange(page)}
+                color="primary"
+                showFirstButton
+                showLastButton
+              />
             </div>
           )}
 

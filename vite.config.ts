@@ -28,10 +28,9 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     hmr: {
-      host: 'trackerdev.mechlintech.com', // Your dev domain or IP
-      protocol: 'ws',                      // Use 'wss' if using HTTPS
-      clientPort: 5173,                    // Must match dev port unless proxied
-      overlay: true                        // Enable overlay for HMR errors
+      overlay: false,
+      clientPort: 443,
+      host: 'trackerdev.mechlintech.com'
     },
     watch: {
       usePolling: true
