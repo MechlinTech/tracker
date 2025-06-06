@@ -3,6 +3,7 @@ import { useStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
 import { Users, Clock, Calendar, X, CheckCircle, XCircle, Clock3, AlertCircle } from 'lucide-react';
 import { format, parseISO, differenceInDays, isAfter } from 'date-fns';
+import { Pagination } from '@mui/material';
 
 interface TeamMember {
   id: string;
@@ -128,20 +129,6 @@ function EmployeeDetailsModal({ isOpen, onClose, employee }: EmployeeDetailsModa
       !isAfter(new Date(leave.end_date), new Date())
     ).length;
 
-  function getPaginationRange(current: number, total: number, delta = 2) {
-    const range = [];
-    const left = Math.max(2, current - delta);
-    const right = Math.min(total - 1, current + delta);
-
-    range.push(1);
-    if (left > 2) range.push('...');
-    for (let i = left; i <= right; i++) range.push(i);
-    if (right < total - 1) range.push('...');
-    if (total > 1) range.push(total);
-
-    return range;
-  }
-
   return (
     <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-start justify-center p-4 z-50 overflow-y-auto">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl my-8">
@@ -221,65 +208,15 @@ function EmployeeDetailsModal({ isOpen, onClose, employee }: EmployeeDetailsModa
 
                 {/* Pagination Controls */}
                 {totalPages > 1 && (
-                  <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200 sm:px-6">
-                    <div className="flex justify-between flex-1 sm:hidden">
-                      <button
-                        onClick={() => handlePageChange(currentPage - 1)}
-                        disabled={currentPage === 1}
-                        className="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Previous
-                      </button>
-                      <button
-                        onClick={() => handlePageChange(currentPage + 1)}
-                        disabled={currentPage === totalPages}
-                        className="relative inline-flex items-center px-4 py-2 ml-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Next
-                      </button>
-                    </div>
-                    <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-                      <div>
-                        <p className="text-sm text-gray-700">
-                          Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
-                          <span className="font-medium">{Math.min(endIndex, timeEntries.length)}</span> of{' '}
-                          <span className="font-medium">{timeEntries.length}</span> results
-                        </p>
-                      </div>
-                      <div>
-                        <nav className="inline-flex -space-x-px rounded-md shadow-sm isolate" aria-label="Pagination">
-                          <button
-                            onClick={() => handlePageChange(currentPage - 1)}
-                            disabled={currentPage === 1}
-                            className="relative inline-flex items-center px-2 py-2 text-gray-400 rounded-l-md border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            Previous
-                          </button>
-                          {getPaginationRange(currentPage, totalPages).map((page, idx) =>
-                            page === '...'
-                              ? <span key={idx} className="px-2 py-2 text-gray-400">...</span>
-                              : <button
-                                  key={page}
-                                  onClick={() => handlePageChange(page as number)}
-                                  className={`relative inline-flex items-center px-4 py-2 text-sm font-medium ${
-                                    currentPage === page
-                                      ? 'z-10 bg-indigo-600 text-white'
-                                      : 'text-gray-900 bg-white hover:bg-gray-50'
-                                  } border border-gray-300`}
-                                >
-                                  {page}
-                                </button>
-                          )}
-                          <button
-                            onClick={() => handlePageChange(currentPage + 1)}
-                            disabled={currentPage === totalPages}
-                            className="relative inline-flex items-center px-2 py-2 text-gray-400 rounded-r-md border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            Next
-                          </button>
-                        </nav>
-                      </div>
-                    </div>
+                  <div className="flex items-center justify-center px-4 py-3 bg-white border-t border-gray-200">
+                    <Pagination 
+                      count={totalPages}
+                      page={currentPage}
+                      onChange={(_, page) => handlePageChange(page)}
+                      color="primary"
+                      showFirstButton
+                      showLastButton
+                    />
                   </div>
                 )}
               </div>
