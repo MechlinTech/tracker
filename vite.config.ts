@@ -24,7 +24,7 @@ export default defineConfig({
     sourcemap: false
   },
   server: {
-    host: true,
+    host: true, // Allows access via IP/domain
     port: 5173,
     strictPort: true,
     hmr: {
@@ -35,7 +35,13 @@ export default defineConfig({
     watch: {
       usePolling: true
     },
-    allowedHosts: ['tracker.mechlintech.com', 'localhost', '127.0.0.1', 'trackerdev.mechlintech.com','trackerprod.mechlintech.com',]
+    allowedHosts: [
+      'tracker.mechlintech.com',
+      'trackerdev.mechlintech.com',
+      'trackerprod.mechlintech.com',
+      'localhost',
+      '127.0.0.1'
+    ]
   },
   optimizeDeps: {
     include: [
@@ -48,3 +54,5 @@ export default defineConfig({
     ]
   }
 });
+
+ 

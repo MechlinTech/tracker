@@ -14,8 +14,8 @@ if (docker ps -a --filter "name=$devContainer" | Select-String $devContainer) {
     docker rm $devContainer
 }
 
-# Run the development container
+# Run the development container with a restart policy
 Write-Host "Running the development container..."
-docker run -d -p 5500:5173 --name $devContainer $devImage
+docker run -d -p 5500:5173 --name $devContainer --restart always $devImage
 
 Write-Host "Development deployment complete!"
