@@ -18,6 +18,9 @@ const LeaveManagement = lazy(() => import('./components/LeaveManagement'));
 const Reports = lazy(() => import('./components/Reports'));
 const PasswordChangeModal = lazy(() => import('./components/PasswordChangeModal'));
 const Profile = lazy(() => import('./components/Profile'));
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
+const Terms = lazy(() => import('./pages/Terms'));
+const Contact = lazy(() => import('./pages/Contact'));
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const user = useStore((state) => state.user);
@@ -156,6 +159,21 @@ export default function App() {
                 <Profile />
               </Layout>
             </PrivateRoute>
+          } />
+          <Route path="/privacy" element={
+            <Layout>
+              <PrivacyPolicy />
+            </Layout>
+          } />
+          <Route path="/terms" element={
+            <Layout>
+              <Terms />
+            </Layout>
+          } />
+          <Route path="/contact" element={
+            <Layout>
+              <Contact />
+            </Layout>
           } />
         </Routes>
       </Suspense>

@@ -151,20 +151,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         onClose={() => setIsPasswordModalOpen(false)}
       />
 
-      {/* <footer className="mt-auto glass-panel border-t py-4">
+      <footer className="mt-auto glass-panel border-t py-4">
         <div className="max-w-7xl mx-auto px-2 sm:px-3 lg:px-4">
           <div className="flex justify-between items-center">
             <p className="text-sm text-surface-500">
               © {new Date().getFullYear()} TimeTracker Pro. All rights reserved.
             </p>
             <div className="flex space-x-6">
-              <a href="#" className="text-sm text-surface-500 hover:text-surface-900">Privacy</a>
-              <a href="#" className="text-sm text-surface-500 hover:text-surface-900">Terms</a>
-              <a href="#" className="text-sm text-surface-500 hover:text-surface-900">Contact</a>
+              <Link to="/privacy" className="text-sm text-surface-500 hover:text-surface-900">Privacy</Link>
+              <Link to="/terms" className="text-sm text-surface-500 hover:text-surface-900">Terms</Link>
+              <Link to="/contact" className="text-sm text-surface-500 hover:text-surface-900">Contact</Link>
             </div>
           </div>
         </div>
-      </footer> */}
+      </footer>
     </div>
   );
 }
