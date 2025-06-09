@@ -1,18 +1,98 @@
 version: "3.8"
 
 services:
+
+  jenkins:
+    image: jenkins/jenkins:lts
+    container_name: jenkins
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+    networks:
+      - monitoring
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-storage:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - loki
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - monitoring
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    restart: unless-stopped
+    networks:
+      - monitoring
+
+  loki:
+    image: grafana/loki:2.9.4
+    container_name: loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./loki/config.yml:/etc/loki/local-config.yaml
+      - C:/loki/wal:/wal
+      - C:/loki/index:/loki/index
+      - C:/loki/index_cache:/loki/index_cache
+      - C:/loki/chunks:/loki/chunks
+      - C:/loki/compactor:/loki/compactor
+    restart: unless-stopped
+    networks:
+      - monitoring
+
+  promtail:
+    image: grafana/promtail:2.9.4
+    container_name: promtail
+    volumes:
+      - ./promtail/config.yml:/etc/promtail/config.yml
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/log:/var/log:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+    restart: unless-stopped
+    networks:
+      - monitoring
+
   tracker:
-    image: time-tracker
-    container_name: tracker
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: tracker
     working_dir: /app
     ports:
       - "5174:5173"
     environment:
-      VITE_APP_ENV: development
+      - VITE_APP_ENV=development
     volumes:
       - .:/app
       - /app/node_modules
     command: ["npm", "run", "dev", "--", "--host"]
+    networks:
+      - monitoring
+
+volumes:
+  grafana-storage:
+  jenkins_home:
+
+networks:
+  monitoring:
