@@ -45,6 +45,15 @@ export default function Reports() {
     },
   });
 
+  const validateDateRange = (start: string, end: string): boolean => {
+    if (start && end && new Date(start) > new Date(end)) {
+      setError('Start date cannot be greater than end date');
+      return false;
+    }
+    setError(null);
+    return true;
+  };
+
   useEffect(() => {
     fetchUsers();
     fetchTimeEntries();
@@ -234,14 +243,17 @@ export default function Reports() {
                   type="date"
                   value={displayFilters.dateRange.start}
                   onChange={(e) => {
+                    const newStart = e.target.value;
                     setDisplayFilters({
                       ...displayFilters,
-                      dateRange: { ...displayFilters.dateRange, start: e.target.value }
+                      dateRange: { ...displayFilters.dateRange, start: newStart }
                     });
-                    setFilters({
-                      ...filters,
-                      dateRange: { ...filters.dateRange, start: e.target.value }
-                    });
+                    if (validateDateRange(newStart, displayFilters.dateRange.end)) {
+                      setFilters({
+                        ...filters,
+                        dateRange: { ...filters.dateRange, start: newStart }
+                      });
+                    }
                   }}
                   max={new Date().toISOString().split('T')[0]}
                   className="input"
@@ -250,19 +262,27 @@ export default function Reports() {
                   type="date"
                   value={displayFilters.dateRange.end}
                   onChange={(e) => {
+                    const newEnd = e.target.value;
                     setDisplayFilters({
                       ...displayFilters,
-                      dateRange: { ...displayFilters.dateRange, end: e.target.value }
+                      dateRange: { ...displayFilters.dateRange, end: newEnd }
                     });
-                    setFilters({
-                      ...filters,
-                      dateRange: { ...filters.dateRange, end: e.target.value }
-                    });
+                    if (validateDateRange(displayFilters.dateRange.start, newEnd)) {
+                      setFilters({
+                        ...filters,
+                        dateRange: { ...filters.dateRange, end: newEnd }
+                      });
+                    }
                   }}
                   max={new Date().toISOString().split('T')[0]}
                   className="input"
                 />
               </div>
+              {error && (
+                <div className="text-red-500 text-sm mt-1">
+                  {error}
+                </div>
+              )}
             </div>
           </div>
           <div className="flex justify-end space-x-2">
