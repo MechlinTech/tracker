@@ -154,6 +154,15 @@ export default function Screenshots() {
     setCurrentPage(page);
   };
 
+  const validateDateRange = (start: string, end: string): boolean => {
+    if (start && end && new Date(start) > new Date(end)) {
+      setError('Start date cannot be greater than end date');
+      return false;
+    }
+    setError(null);
+    return true;
+  };
+
   return (
     <div className="space-y-6">
       <div className="bg-white shadow rounded-lg p-6">
@@ -199,24 +208,39 @@ export default function Screenshots() {
                   <input
                     type="date"
                     value={filters.dateRange.start}
-                    onChange={(e) => setFilters({
-                      ...filters,
-                      dateRange: { ...filters.dateRange, start: e.target.value }
-                    })}
+                    onChange={(e) => {
+                      const newStart = e.target.value;
+                      if (validateDateRange(newStart, filters.dateRange.end)) {
+                        setFilters({
+                          ...filters,
+                          dateRange: { ...filters.dateRange, start: newStart }
+                        });
+                      }
+                    }}
                     max={new Date().toISOString().split('T')[0]}
                     className="input"
                   />
                   <input
                     type="date"
                     value={filters.dateRange.end}
-                    onChange={(e) => setFilters({
-                      ...filters,
-                      dateRange: { ...filters.dateRange, end: e.target.value }
-                    })}
+                    onChange={(e) => {
+                      const newEnd = e.target.value;
+                      if (validateDateRange(filters.dateRange.start, newEnd)) {
+                        setFilters({
+                          ...filters,
+                          dateRange: { ...filters.dateRange, end: newEnd }
+                        });
+                      }
+                    }}
                     max={new Date().toISOString().split('T')[0]}
                     className="input"
                   />
                 </div>
+                {error && (
+                  <div className="text-red-500 text-sm mt-1">
+                    {error}
+                  </div>
+                )}
               </div>
               {(user?.role === 'admin' || user?.role === 'manager' || user?.role === 'hr') && (
                 <div>
