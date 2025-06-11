@@ -3,14 +3,19 @@ $devContainer = "Timetracker-dev"
 $devImage = "tech120/time-tracker-image:dev"
 $devImageTag = "time-tracker-image-dev"
 
-# Create .env file with Azure DevOps variables
-Write-Host "Creating .env file with Azure DevOps variables..."
+# DEBUG: Check if environment variables are present
+Write-Host "Supabase Anon Key: $env:VITE_SUPABASE_ANON_KEY"
+Write-Host "Supabase URL: $env:VITE_SUPABASE_URL"
+
+# Create .env file using values from Azure DevOps environment variables
+Write-Host "Creating .env file with environment variables..."
 @"
 VITE_SUPABASE_ANON_KEY=$($env:VITE_SUPABASE_ANON_KEY)
 VITE_SUPABASE_URL=$($env:VITE_SUPABASE_URL)
 "@ | Out-File -Encoding ascii .env
 
-# Display .env for debugging (optional, comment out in production)
+# DEBUG: Show .env file contents (optional, remove in production)
+Write-Host "Contents of .env file:"
 Get-Content .env
 
 # Pull the development image from the registry
