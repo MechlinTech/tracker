@@ -16,7 +16,7 @@ pipeline {
         stage('Set Tag') {
             steps {
                 script {
-                    def branch = env.GIT_BRANCH?.replace('origin/', '')
+                    def branch = env.GIT_BRANCH?.replace('origin/', '') Set this in Jenkins Credentials
                     if (branch == 'main') {
                         env.DOCKER_TAG = "dev"
                     } else if (branch == 'production') {
