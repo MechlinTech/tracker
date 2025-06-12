@@ -49,6 +49,17 @@ export default function Screenshots() {
     },
     userName: '',
   });
+  const [displayFilters, setDisplayFilters] = useState<FilterOptions>({
+    dateRange: {
+      start: '',
+      end: '',
+    },
+    timeRange: {
+      start: '',
+      end: '',
+    },
+    userName: '',
+  });
 
   useEffect(() => {
     fetchScreenshots();
@@ -65,9 +76,11 @@ export default function Screenshots() {
         .from('screenshots')
         .select(`
           *,
-          time_entries!inner(
+          time_entries(
             user_id,
-            profiles!inner(full_name)
+            profiles(
+              full_name
+            )
           )
         `)
         .order('taken_at', { ascending: false });
@@ -82,7 +95,10 @@ export default function Screenshots() {
 
           if (managedUsersError) throw managedUsersError;
           
-          const userIds = managedUsers?.map(u => u.id) || [];
+          const userIds = [
+            ...(managedUsers?.map(u => u.id) || []),
+            user.id
+          ];
           if (userIds.length === 0) {
             setScreenshots([]);
             setLoading(false);
@@ -129,16 +145,16 @@ export default function Screenshots() {
                          screenshot.user.full_name.toLowerCase().includes(searchTerm.toLowerCase());
     
     let matchesDateRange = true;
-    if (filters.dateRange.start && filters.dateRange.end) {
+    if (displayFilters.dateRange.start && displayFilters.dateRange.end) {
       matchesDateRange = isWithinInterval(screenshotDate, {
-        start: startOfDay(new Date(filters.dateRange.start)),
-        end: endOfDay(new Date(filters.dateRange.end))
+        start: startOfDay(new Date(displayFilters.dateRange.start)),
+        end: endOfDay(new Date(displayFilters.dateRange.end))
       });
     }
 
     let matchesUserName = true;
-    if (filters.userName) {
-      matchesUserName = screenshot.user.full_name.toLowerCase().includes(filters.userName.toLowerCase());
+    if (displayFilters.userName) {
+      matchesUserName = screenshot.user.full_name.toLowerCase().includes(displayFilters.userName.toLowerCase());
     }
 
     return matchesSearch && matchesDateRange && matchesUserName;
@@ -207,10 +223,14 @@ export default function Screenshots() {
                 <div className="flex space-x-2">
                   <input
                     type="date"
-                    value={filters.dateRange.start}
+                    value={displayFilters.dateRange.start}
                     onChange={(e) => {
                       const newStart = e.target.value;
-                      if (validateDateRange(newStart, filters.dateRange.end)) {
+                      setDisplayFilters({
+                        ...displayFilters,
+                        dateRange: { ...displayFilters.dateRange, start: newStart }
+                      });
+                      if (validateDateRange(newStart, displayFilters.dateRange.end)) {
                         setFilters({
                           ...filters,
                           dateRange: { ...filters.dateRange, start: newStart }
@@ -222,10 +242,14 @@ export default function Screenshots() {
                   />
                   <input
                     type="date"
-                    value={filters.dateRange.end}
+                    value={displayFilters.dateRange.end}
                     onChange={(e) => {
                       const newEnd = e.target.value;
-                      if (validateDateRange(filters.dateRange.start, newEnd)) {
+                      setDisplayFilters({
+                        ...displayFilters,
+                        dateRange: { ...displayFilters.dateRange, end: newEnd }
+                      });
+                      if (validateDateRange(displayFilters.dateRange.start, newEnd)) {
                         setFilters({
                           ...filters,
                           dateRange: { ...filters.dateRange, end: newEnd }
@@ -236,11 +260,11 @@ export default function Screenshots() {
                     className="input"
                   />
                 </div>
-                {error && (
+                {/* {error && (
                   <div className="text-red-500 text-sm mt-1">
                     {error}
                   </div>
-                )}
+                )} */}
               </div>
               {(user?.role === 'admin' || user?.role === 'manager' || user?.role === 'hr') && (
                 <div>
@@ -248,9 +272,9 @@ export default function Screenshots() {
                   <input
                     type="text"
                     placeholder="Filter by user name..."
-                    value={filters.userName}
-                    onChange={(e) => setFilters({
-                      ...filters,
+                    value={displayFilters.userName}
+                    onChange={(e) => setDisplayFilters({
+                      ...displayFilters,
                       userName: e.target.value
                     })}
                     className="input"

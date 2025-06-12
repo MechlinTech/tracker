@@ -2,6 +2,7 @@ import React, { useState, useEffect, Dispatch, SetStateAction } from 'react';
 import { supabase } from '../lib/supabase';
 import { User, LogOut, Settings, Key } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useStore } from '../lib/store';
 
 interface UserMenuProps {
   className?: string;
@@ -12,6 +13,7 @@ export default function UserMenu({ className, setIsPasswordModalOpen }: UserMenu
   const [isOpen, setIsOpen] = useState(false);
   const [userName, setUserName] = useState('');
   const navigate = useNavigate();
+  const user = useStore((state) => state.user);
 
   useEffect(() => {
     fetchUserName();
@@ -67,17 +69,19 @@ export default function UserMenu({ className, setIsPasswordModalOpen }: UserMenu
           />
           <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
             <div className="py-1" role="menu" aria-orientation="vertical">
-              <button
-                onClick={() => {
-                  setIsPasswordModalOpen(true);
-                  setIsOpen(false);
-                }}
-                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                role="menuitem"
-              >
-                <Key className="h-4 w-4 mr-3" />
-                Change Password
-              </button>
+              {user?.role === 'admin' && (
+                <button
+                  onClick={() => {
+                    setIsPasswordModalOpen(true);
+                    setIsOpen(false);
+                  }}
+                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  role="menuitem"
+                >
+                  <Key className="h-4 w-4 mr-3" />
+                  Change Password
+                </button>
+              )}
               <button
                 onClick={handleSignOut}
                 className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100"

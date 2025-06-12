@@ -68,6 +68,12 @@ export default function PasswordChangeModal({ isOpen, onClose }: PasswordChangeM
         setUser(profile);
       }
 
+      // Clear form fields
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setError(null);
+
       onClose();
     } catch (error) {
       console.error('Error changing password:', error);

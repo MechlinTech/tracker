@@ -126,6 +126,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <button
                 onClick={() => { setIsPasswordModalOpen(true); setMobileMenuOpen(false); }}
                 className="nav-link nav-link-inactive"
+                style={{ display: user?.role === 'admin' ? 'flex' : 'none' }}
               >
                 <Key className="h-4 w-4 mr-2" />
                 Change Password
