@@ -1,24 +1,38 @@
-# Use an official Node.js runtime as a parent image
-FROM node:18
+# Use official Node.js Alpine image for smaller size
+FROM node:18-alpine
 
-# Set the working directory in the container
+# Set working directory
 WORKDIR /app
 
-# Copy package.json and package-lock.json (including your .env if needed)
-COPY package*.json ./
-COPY .env ./
+# Install dependencies first for better caching
+COPY package.json package-lock.json* ./
 
-# Install dependencies
-RUN npm install
+# Install dependencies with clean cache and error handling
+RUN \
+  if [ -f package-lock.json ]; then npm ci; \
+  else npm install; fi && \
+  npm cache clean --force && \
+  rm -rf /tmp/*
 
-# Copy the rest of the application files
+# Copy environment files (if exists)
+COPY .env* ./
+
+# Copy application files
 COPY . .
 
-# Expose the port your app runs on (Vite default is 5173)
-EXPOSE 5173
-
-# Set environment variable for Vite development
+# Set production environment
+ENV NODE_ENV=production
 ENV VITE_APP_ENV=development
 
-# Command to run the app (for Vite development server)
+# Build the application (if needed)
+# RUN npm run build
+
+# Expose port
+EXPOSE 5173
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s \
+  CMD curl -f http://localhost:5173 || exit 1
+
+# Run the application
 CMD ["npm", "run", "dev", "--", "--host"]
