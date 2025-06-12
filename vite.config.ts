@@ -7,6 +7,10 @@ export default defineConfig(({ mode }) => {
   // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
   const env = loadEnv(mode, process.cwd(), '');
   
+  // Determine the host based on the environment
+  const isDev = mode === 'development';
+  const host = isDev ? 'trackerdev.mechlintech.com' : 'tracker.mechlintech.com';
+  
   return {
     plugins: [react()],
     resolve: {
@@ -39,7 +43,7 @@ export default defineConfig(({ mode }) => {
       hmr: {
         overlay: false,
         clientPort: 443,
-        host: 'trackerdev.mechlintech.com'
+        host: host
       },
       watch: {
         usePolling: true
