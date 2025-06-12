@@ -12,10 +12,11 @@ let isTracking = false;
 let currentTimeEntry: any = null;
 let screenshotJob: schedule.Job | null = null;
 
-const supabase = createClient(
-  process.env.VITE_SUPABASE_URL!,
-  process.env.VITE_SUPABASE_ANON_KEY!
-);
+// Get environment variables with fallback for development
+const supabaseUrl = process.env.VITE_SUPABASE_URL || 'your_default_dev_url';
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || 'your_default_dev_key';
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 async function checkPermissions() {
   if (process.platform === 'win32') {
