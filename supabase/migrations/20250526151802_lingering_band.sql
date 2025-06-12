@@ -18,14 +18,14 @@ ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'accountant';
 
 -- Add duration column to time_entries if not exists
 ALTER TABLE time_entries
-ADD COLUMN IF NOT EXISTS duration double precision;
+ADD COLUMN IF NOT EXISTS duration int4;
 
 -- Create function to calculate duration
 CREATE OR REPLACE FUNCTION calculate_time_entry_duration()
 RETURNS TRIGGER AS $$
 BEGIN
   IF NEW.end_time IS NOT NULL THEN
-    NEW.duration = EXTRACT(EPOCH FROM (NEW.end_time - NEW.start_time)) / 3600.0;
+    NEW.duration = EXTRACT(EPOCH FROM (NEW.end_time - NEW.start_time));
   END IF;
   RETURN NEW;
 END;
