@@ -13,6 +13,7 @@ export default function PasswordChangeModal({ isOpen, onClose }: PasswordChangeM
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const setUser = useStore((state) => state.setUser);
 
@@ -21,6 +22,7 @@ export default function PasswordChangeModal({ isOpen, onClose }: PasswordChangeM
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccess(null);
     setLoading(true);
 
     try {
@@ -73,8 +75,12 @@ export default function PasswordChangeModal({ isOpen, onClose }: PasswordChangeM
       setNewPassword('');
       setConfirmPassword('');
       setError(null);
+      setSuccess('Password changed successfully!');
 
-      onClose();
+      // Close modal after 2 seconds
+      setTimeout(() => {
+        onClose();
+      }, 2000);
     } catch (error) {
       console.error('Error changing password:', error);
       setError(error instanceof Error ? error.message : 'Failed to change password');
@@ -99,6 +105,12 @@ export default function PasswordChangeModal({ isOpen, onClose }: PasswordChangeM
         {error && (
           <div className="mb-4 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm">
             {error}
+          </div>
+        )}
+
+        {success && (
+          <div className="mb-4 bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-md text-sm">
+            {success}
           </div>
         )}
 
