@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_HUB_CREDENTIALS = credentials('dockerhub-creds') // Set this in Jenkins Credentials
+        DOCKER_HUB_CREDENTIALS = credentials('dockerhub-creds') // Stored Jenkins credentials ID
         IMAGE_NAME = "tech120/time-tracker-image"
     }
 
@@ -16,7 +16,9 @@ pipeline {
         stage('Set Tag') {
             steps {
                 script {
-                    def branch = env.GIT_BRANCH?.replace('origin/', '')
+                    // Extract branch name properly
+                    def branch = env.GIT_BRANCH?.replaceFirst(/^origin\//, '')
+
                     if (branch == 'main') {
                         env.DOCKER_TAG = "dev"
                     } else if (branch == 'production') {
@@ -24,6 +26,8 @@ pipeline {
                     } else {
                         error "Unsupported branch: ${branch}"
                     }
+
+                    echo "Branch: ${branch}, Docker Tag: ${env.DOCKER_TAG}"
                 }
             }
         }
