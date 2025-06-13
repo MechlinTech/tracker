@@ -17,7 +17,7 @@ export default function PrivacyPolicy() {
             <li>Screenshots and productivity metrics</li>
             <li>Account credentials</li>
           </ul>
-        </section>
+        </section> 
 
         <section>
           <h2 className="text-2xl font-semibold mb-4">2. How We Use Your Information</h2>
