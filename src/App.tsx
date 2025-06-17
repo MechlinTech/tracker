@@ -4,6 +4,7 @@ import { useStore } from './lib/store';
 import { supabase } from './lib/supabase';
 import Layout from './components/Layout';
 import LoadingSpinner from './components/LoadingSpinner';
+// import { startScheduledJob, stopScheduledJob } from './services/scheduler';
 
 // Lazy load components
 const Login = lazy(() => import('./components/Login'));
@@ -84,6 +85,16 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  // useEffect(() => {
+  //   // Start the scheduled job
+  //   startScheduledJob();
+
+  //   // Cleanup function to stop the job when component unmounts
+  //   return () => {
+  //     stopScheduledJob();
+  //   };
+  // }, []);
+
   return (
     <Router>
       <Suspense fallback={<LoadingSpinner />}>
