@@ -397,7 +397,7 @@ export default function TeamView() {
                 <div className="flex items-center text-sm text-gray-500">
                   <Clock className="h-4 w-4 mr-2" />
                   {member.latest_activity ? (
-                    <span>Last active: {format(parseISO(member.latest_activity), 'PPp')}</span>
+                    <span>Start time: {format(parseISO(member.latest_activity), 'PPp')}</span>
                   ) : (
                     <span>No recent activity</span>
                   )}

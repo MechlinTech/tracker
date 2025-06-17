@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
-import { Settings, Users, AlertCircle, Clock, Monitor, Download, Search, Plus, X, Eye, EyeOff, Trash2 } from 'lucide-react';
+import { supabase, supabaseAdmin } from '../lib/supabase';
+import { Settings, Users, AlertCircle, Clock, Monitor, Download, Search, Plus, X, Eye, EyeOff, Trash2, Key, Copy, CheckCircle } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { format, parseISO } from 'date-fns';
 import { Pagination } from '@mui/material';
+import { adminService } from '../services/adminService';
 
 interface User {
   id: string;
@@ -46,6 +47,7 @@ export default function AdminPanel() {
   const [managers, setManagers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddUser, setShowAddUser] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -62,6 +64,12 @@ export default function AdminPanel() {
     team: '',
     customTeam: ''
   });
+  const [showPasswordChange, setShowPasswordChange] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [generatedPassword, setGeneratedPassword] = useState('');
+  const [showGeneratedPassword, setShowGeneratedPassword] = useState(false);
+  const [passwordChangeError, setPasswordChangeError] = useState<string | null>(null);
+  const [isManualPassword, setIsManualPassword] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -122,13 +130,7 @@ export default function AdminPanel() {
 
   const handleRoleChange = async (userId: string, newRole: string) => {
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ role: newRole })
-        .eq('id', userId);
-
-      if (error) throw error;
-
+      await adminService.updateUserRole(userId, newRole);
       setUsers(users.map(user => 
         user.id === userId ? { ...user, role: newRole as User['role'] } : user
       ));
@@ -149,13 +151,7 @@ export default function AdminPanel() {
 
   const handleManagerChange = async (userId: string, newManagerId: string) => {
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ manager_id: newManagerId === 'none' ? null : newManagerId })
-        .eq('id', userId);
-
-      if (error) throw error;
-
+      await adminService.updateUserManager(userId, newManagerId === 'none' ? null : newManagerId);
       setUsers(users.map(user =>
         user.id === userId ? { ...user, manager_id: newManagerId === 'none' ? null : newManagerId } : user
       ));
@@ -167,13 +163,7 @@ export default function AdminPanel() {
 
   const handleTeamChange = async (userId: string, newTeam: string) => {
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ team: newTeam })
-        .eq('id', userId);
-
-      if (error) throw error;
-
+      await adminService.updateUserTeam(userId, newTeam);
       setUsers(users.map(user =>
         user.id === userId ? { ...user, team: newTeam } : user
       ));
@@ -192,10 +182,11 @@ export default function AdminPanel() {
         throw new Error('Password must be at least 6 characters long');
       }
 
-      // Create auth user with provided password
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+      // Create auth user with admin API
+      const { data: authData, error: signUpError } = await supabaseAdmin.auth.admin.createUser({
         email: newUser.email,
         password: newUser.password,
+        email_confirm: true
       });
 
       if (signUpError) throw signUpError;
@@ -227,6 +218,13 @@ export default function AdminPanel() {
       });
       setShowPassword(false);
       setShowAddUser(false);
+      setSuccessMessage(`User ${newUser.full_name} has been successfully created`);
+      
+      // Clear success message after 5 seconds
+      setTimeout(() => {
+        setSuccessMessage(null);
+      }, 5000);
+      
       fetchUsers();
     } catch (error) {
       console.error('Error creating user:', error);
@@ -243,14 +241,17 @@ export default function AdminPanel() {
 
       if (error) throw error;
 
+      const formatDuration = (seconds: number) => {
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        return `${hours}h:${minutes}m`;
+      };
+
       const reportData = timeEntries.map(entry => ({
         'Employee Name': entry.profiles.full_name,
         'Date': format(parseISO(entry.start_time), 'yyyy-MM-dd'),
         'Start Time': format(parseISO(entry.start_time), 'HH:mm:ss'),
-        'End Time': entry.end_time ? format(parseISO(entry.end_time), 'HH:mm:ss') : 'Ongoing',
-        'Hours': entry.end_time 
-          ? ((new Date(entry.end_time).getTime() - new Date(entry.start_time).getTime()) / (1000 * 60 * 60)).toFixed(2)
-          : 'Ongoing'
+        'Duration': formatDuration(entry.duration || 0)
       }));
 
       const wb = XLSX.utils.book_new();
@@ -267,187 +268,76 @@ export default function AdminPanel() {
     if (!userToDelete) return;
 
     try {
-      // First delete all related records in dependency order
-
-      // Get time entry IDs for the user (needed for screenshots and activity logs)
-      console.log(`Attempting to get time entry IDs for user: ${userToDelete.id}`);
-      const { data: timeEntries, error: timeEntriesFetchError } = await supabase
-        .from('time_entries')
-        .select('id')
-        .eq('user_id', userToDelete.id);
-
-      if (timeEntriesFetchError) {
-        console.error('Supabase time entries fetch error during deletion:', timeEntriesFetchError);
-        throw timeEntriesFetchError;
-      }
-      const timeEntryIds = timeEntries?.map(entry => entry.id) || [];
-      console.log(`Found ${timeEntryIds.length} time entries for user: ${userToDelete.id}`);
-
-      // Get screenshot IDs related to user's time entries (needed for activity logs)
-      let screenshotIds: string[] = [];
-      if (timeEntryIds.length > 0) {
-        console.log(`Attempting to get screenshot IDs for user's time entries: ${timeEntryIds}`);
-        const { data: screenshots, error: screenshotsFetchError } = await supabase
-          .from('screenshots')
-          .select('id')
-          .in('time_entry_id', timeEntryIds);
-
-        if (screenshotsFetchError) {
-          console.error('Supabase screenshots fetch error during deletion:', screenshotsFetchError);
-          throw screenshotsFetchError;
-        }
-        screenshotIds = screenshots?.map(screenshot => screenshot.id) || [];
-        console.log(`Found ${screenshotIds.length} screenshots for user's time entries.`);
-      } else {
-        console.log(`No time entries found, skipping screenshot ID fetch.`);
+      const result = await adminService.deleteUser(userToDelete.id);
+      
+      if (!result.success) {
+        setError(result.error || 'Failed to delete user. Please try again.');
+        return;
       }
 
-      // Delete activity logs related to user's screenshots
-      if (screenshotIds.length > 0) {
-        console.log(`Attempting to delete activity logs for user's screenshots: ${screenshotIds}`);
-        const { error: activityLogsError } = await supabase
-          .from('activity_logs')
-          .delete()
-          .in('screenshot_id', screenshotIds);
-
-        if (activityLogsError) {
-          console.error('Supabase activity logs deletion error:', activityLogsError);
-          throw activityLogsError;
-        }
-        console.log(`Successfully deleted activity logs for user's screenshots.`);
-      } else {
-        console.log(`No screenshots found, skipping activity log deletion for user: ${userToDelete.id}`);
-      }
-
-      // Delete screenshots related to user's time entries
-      if (timeEntryIds.length > 0) {
-        console.log(`Attempting to delete screenshots for user's time entries: ${timeEntryIds}`);
-        const { error: screenshotsError } = await supabase
-          .from('screenshots')
-          .delete()
-          .in('time_entry_id', timeEntryIds);
-
-        if (screenshotsError) {
-          console.error('Supabase screenshots deletion error:', screenshotsError);
-          throw screenshotsError;
-        }
-        console.log(`Successfully deleted screenshots for user's time entries.`);
-      } else {
-         console.log(`No time entries found, skipping screenshot deletion.`);
-      }
-
-      // Get leave request IDs for the user
-      console.log(`Attempting to get leave request IDs for user: ${userToDelete.id}`);
-      const { data: leaveRequests, error: leaveRequestsFetchError } = await supabase
-        .from('leave_requests')
-        .select('id')
-        .eq('user_id', userToDelete.id);
-
-      if (leaveRequestsFetchError) {
-        console.error('Supabase leave requests fetch error during deletion:', leaveRequestsFetchError);
-        throw leaveRequestsFetchError;
-      }
-      const leaveRequestIds = leaveRequests?.map(request => request.id) || [];
-      console.log(`Found ${leaveRequestIds.length} leave requests for user: ${userToDelete.id}`);
-
-      // Delete leave approvers related to user's leave requests
-      if (leaveRequestIds.length > 0) {
-        console.log(`Attempting to delete leave approvers for user's leave requests: ${leaveRequestIds}`);
-        const { error: leaveApproversError } = await supabase
-          .from('leave_approvers')
-          .delete()
-          .in('leave_request_id', leaveRequestIds);
-
-        if (leaveApproversError) {
-          console.error('Supabase leave approvers deletion error:', leaveApproversError);
-          throw leaveApproversError;
-        }
-        console.log(`Successfully deleted leave approvers for user's leave requests.`);
-      } else {
-        console.log(`No leave requests found, skipping leave approvers deletion.`);
-      }
-
-      // Delete leave requests for the user
-      if (leaveRequestIds.length > 0) {
-         console.log(`Attempting to delete leave requests for user: ${userToDelete.id}`);
-         const { error: leaveRequestsError } = await supabase
-           .from('leave_requests')
-           .delete()
-           .eq('user_id', userToDelete.id);
-
-         if (leaveRequestsError) {
-           console.error('Supabase leave requests deletion error:', leaveRequestsError);
-           throw leaveRequestsError;
-         }
-         console.log(`Successfully deleted leave requests for user.`);
-      } else {
-         console.log(`No leave requests found, skipping leave requests deletion.`);
-      }
-
-      // Delete time entries for the user (already fetched IDs earlier)
-      if (timeEntryIds.length > 0) {
-        console.log(`Attempting to delete time entries for user: ${userToDelete.id}`);
-        const { error: timeEntriesError } = await supabase
-          .from('time_entries')
-          .delete()
-          .eq('user_id', userToDelete.id);
-
-        if (timeEntriesError) {
-          console.error('Supabase time entries deletion error:', timeEntriesError);
-          throw timeEntriesError;
-        }
-        console.log(`Successfully deleted time entries for user.`);
-      } else {
-        console.log(`No time entries found, skipping time entries deletion.`);
-      }
-
-      // Delete notifications for the user
-      console.log(`Attempting to delete notifications for user: ${userToDelete.id}`);
-      const { error: notificationsError } = await supabase
-        .from('notifications')
-        .delete()
-        .eq('user_id', userToDelete.id);
-
-      if (notificationsError) {
-        console.error('Supabase notifications deletion error:', notificationsError);
-        throw notificationsError;
-      }
-      console.log(`Successfully deleted notifications for user: ${userToDelete.id}`);
-
-      // Delete user's profile
-      console.log(`Attempting to delete profile for user: ${userToDelete.id}`);
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', userToDelete.id);
-
-      if (profileError) {
-        console.error('Supabase profile deletion error:', profileError);
-        throw profileError;
-      }
-      console.log(`Successfully deleted profile for user: ${userToDelete.id}`);
-
-      // Finally, delete user's auth account using a serverless function
-      console.log(`Attempting to delete auth user: ${userToDelete.id}`);
-      const { error: deleteUserError } = await supabase.functions.invoke('delete-user', {
-        body: { userId: userToDelete.id }
-      });
-
-      if (deleteUserError) {
-        console.error('Error calling delete-user function:', deleteUserError);
-        throw deleteUserError;
-      }
-      console.log(`Successfully deleted auth user: ${userToDelete.id}`);
-
-      // Update local state
       setUsers(users.filter(user => user.id !== userToDelete.id));
       setManagers(managers.filter(manager => manager.id !== userToDelete.id));
       setShowDeleteConfirm(false);
       setUserToDelete(null);
       setError(null);
+      setSuccessMessage(`User ${userToDelete.full_name} has been successfully deleted`);
+      
+      // Clear success message after 5 seconds
+      setTimeout(() => {
+        setSuccessMessage(null);
+      }, 5000);
     } catch (error) {
       console.error('Error during user deletion process:', error);
       setError('Failed to delete user and their records. Please try again.');
+    }
+  };
+
+  const generateRandomPassword = () => {
+    const length = 6;
+    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let password = "";
+    for (let i = 0; i < length; i++) {
+      const randomIndex = Math.floor(Math.random() * charset.length);
+      password += charset[randomIndex];
+    }
+    setGeneratedPassword(password);
+  };
+
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(generatedPassword);
+      // You could add a toast notification here if you have one
+    } catch (err) {
+      console.error('Failed to copy password:', err);
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    if (!selectedUser || !generatedPassword) return;
+
+    try {
+      const result = await adminService.resetUserPassword(selectedUser.id, generatedPassword);
+      
+      if (!result.success) {
+        setPasswordChangeError(result.error || 'Failed to change password. Please try again.');
+        return;
+      }
+
+      setShowPasswordChange(false);
+      setSelectedUser(null);
+      setGeneratedPassword('');
+      setShowGeneratedPassword(false);
+      setPasswordChangeError(null);
+      setIsManualPassword(false);
+      setSuccessMessage(`Password successfully changed for ${selectedUser.full_name}`);
+      
+      // Clear success message after 5 seconds
+      setTimeout(() => {
+        setSuccessMessage(null);
+      }, 5000);
+    } catch (error: unknown) {
+      console.error('Error in handlePasswordChange:', error);
+      setPasswordChangeError('Failed to change password. Please try again.');
     }
   };
 
@@ -507,6 +397,13 @@ export default function AdminPanel() {
           <div className="mb-6 bg-red-50 border border-red-200 rounded-md p-4 flex items-center">
             <AlertCircle className="h-5 w-5 text-red-400 mr-3" />
             <span className="text-red-700">{error}</span>
+          </div>
+        )}
+
+        {successMessage && (
+          <div className="mb-6 bg-green-50 border border-green-200 rounded-md p-4 flex items-center">
+            <CheckCircle className="h-5 w-5 text-green-400 mr-3" />
+            <span className="text-green-700">{successMessage}</span>
           </div>
         )}
 
@@ -736,9 +633,9 @@ export default function AdminPanel() {
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Activity
                 </th>
-                {/* <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
-                </th> */}
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -811,18 +708,37 @@ export default function AdminPanel() {
                       </div>
                     </div>
                   </td>
-                  {/* <td className="px-6 py-4 whitespace-nowrap text-center">
-                    <button
-                      onClick={() => {
-                        setUserToDelete(user);
-                        setShowDeleteConfirm(true);
-                      }}
-                      className="text-red-600 hover:text-red-900"
-                      title="Delete User"
-                    >
-                      <Trash2 className="h-5 w-5" />
-                    </button>
-                  </td> */}
+                  <td className="px-6 py-4 whitespace-nowrap text-center">
+                    <div className="flex justify-center space-x-3">
+                      <button
+                        onClick={() => {
+                          setSelectedUser(user);
+                          setShowPasswordChange(true);
+                          generateRandomPassword();
+                        }}
+                        className="p-2 rounded-md bg-indigo-50 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-900 relative group transition-colors"
+                        title="Change Password"
+                      >
+                        <Key className="h-5 w-5" />
+                        <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-900 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                          Change Password
+                        </span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setUserToDelete(user);
+                          setShowDeleteConfirm(true);
+                        }}
+                        className="p-2 rounded-md bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-900 relative group transition-colors"
+                        title="Delete User"
+                      >
+                        <Trash2 className="h-5 w-5" />
+                        <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-900 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                          Delete User
+                        </span>
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -843,6 +759,112 @@ export default function AdminPanel() {
           </div>
         )}
       </div>
+
+      {/* Password Change Modal */}
+      {showPasswordChange && selectedUser && (
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium text-gray-900">Change Password</h3>
+              <button
+                onClick={() => {
+                  setShowPasswordChange(false);
+                  setSelectedUser(null);
+                  setGeneratedPassword('');
+                  setShowGeneratedPassword(false);
+                  setPasswordChangeError(null);
+                  setIsManualPassword(false);
+                }}
+                className="text-gray-400 hover:text-gray-500"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <p className="text-gray-700">
+                Changing password for <span className="font-semibold">{selectedUser.full_name}</span>
+              </p>
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2 mb-2">
+                  <input
+                    type="checkbox"
+                    id="manualPassword"
+                    checked={isManualPassword}
+                    onChange={(e) => {
+                      setIsManualPassword(e.target.checked);
+                      if (!e.target.checked) {
+                        generateRandomPassword();
+                      }
+                    }}
+                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="manualPassword" className="text-sm text-gray-700">
+                    Enter password manually
+                  </label>
+                </div>
+                <div className="relative">
+                  <input
+                    type={showGeneratedPassword ? 'text' : 'password'}
+                    value={generatedPassword}
+                    onChange={(e) => setGeneratedPassword(e.target.value)}
+                    readOnly={!isManualPassword}
+                    className="block w-full rounded-md border border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2 pr-20"
+                    placeholder={isManualPassword ? "Enter new password" : "Generated password"}
+                  />
+                  <div className="absolute inset-y-0 right-0 flex items-center space-x-2 pr-2">
+                    <button
+                      onClick={() => setShowGeneratedPassword(!showGeneratedPassword)}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      {showGeneratedPassword ? (
+                        <EyeOff className="h-5 w-5" />
+                      ) : (
+                        <Eye className="h-5 w-5" />
+                      )}
+                    </button>
+                    {!isManualPassword && (
+                      <button
+                        onClick={copyToClipboard}
+                        className="text-gray-400 hover:text-gray-600"
+                        title="Copy Password"
+                      >
+                        <Copy className="h-5 w-5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="flex space-x-3">
+                  {!isManualPassword && (
+                    <button
+                      onClick={generateRandomPassword}
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    >
+                      Generate New Password
+                    </button>
+                  )}
+                  <button
+                    onClick={handlePasswordChange}
+                    disabled={!generatedPassword}
+                    className={`flex-1 px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+                      !generatedPassword
+                        ? 'bg-indigo-400 cursor-not-allowed'
+                        : 'bg-indigo-600 hover:bg-indigo-700'
+                    }`}
+                  >
+                    Reset Password
+                  </button>
+                </div>
+                {passwordChangeError && (
+                  <div className="bg-red-50 border border-red-200 rounded-md p-3 text-sm text-red-700 flex items-center">
+                    <AlertCircle className="h-4 w-4 mr-2" />
+                    {passwordChangeError}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
