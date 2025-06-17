@@ -337,7 +337,7 @@ export default function TeamView() {
 
             return {
               ...member,
-              current_status: latestEntry?.description === 'Tracking started' ? 'online' : 'offline',
+              current_status: latestEntry?.description === 'Tracking started' || latestEntry?.description === 'Tracking paused' ? 'online' : 'offline',
               latest_activity: latestEntry?.start_time,
             };
           })
