@@ -4,6 +4,7 @@ import { useStore } from './lib/store';
 import { supabase } from './lib/supabase';
 import Layout from './components/Layout';
 import LoadingSpinner from './components/LoadingSpinner';
+import ProtectedRoute from './components/ProtectedRoute';
 // import { startScheduledJob, stopScheduledJob } from './services/scheduler';
 
 // Lazy load components
@@ -102,74 +103,74 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/" element={
-            <PrivateRoute>
+            <ProtectedRoute>
               <Layout>
                 <Navigate to="/dashboard" replace />
               </Layout>
-            </PrivateRoute>
+            </ProtectedRoute>
           } />
           <Route path="/dashboard" element={
-            <PrivateRoute>
+            <ProtectedRoute>
               <Layout>
                 <Dashboard />
               </Layout>
-            </PrivateRoute>
+            </ProtectedRoute>
           } />
           <Route path="/time-tracker" element={
-            <PrivateRoute>
+            <ProtectedRoute>
               <Layout>
                 <TimeTracker />
               </Layout>
-            </PrivateRoute>
+            </ProtectedRoute>
           } />
           <Route path="/team" element={
-            <PrivateRoute>
+            <ProtectedRoute allowedRoles={['manager', 'admin']}>
               <Layout>
                 <TeamView />
               </Layout>
-            </PrivateRoute>
+            </ProtectedRoute>
           } />
           <Route path="/screenshots" element={
-            <PrivateRoute>
+            <ProtectedRoute /* allowedRoles={['employee', 'manager', 'admin']} */>
               <Layout>
                 <Screenshots />
               </Layout>
-            </PrivateRoute>
+            </ProtectedRoute>
           } />
           <Route path="/admin" element={
-            <PrivateRoute>
+            <ProtectedRoute allowedRoles={['admin']}>
               <Layout>
                 <AdminPanel />
               </Layout>
-            </PrivateRoute>
+            </ProtectedRoute>
           } />
           <Route path="/hr" element={
-            <PrivateRoute>
+            <ProtectedRoute allowedRoles={['hr']}>
               <Layout>
                 <HRManagement />
               </Layout>
-            </PrivateRoute>
+            </ProtectedRoute>
           } />
           <Route path="/leave" element={
-            <PrivateRoute>
+            <ProtectedRoute>
               <Layout>
                 <LeaveManagement />
               </Layout>
-            </PrivateRoute>
+            </ProtectedRoute>
           } />
           <Route path="/reports" element={
-            <PrivateRoute>
+            <ProtectedRoute>
               <Layout>
                 <Reports />
               </Layout>
-            </PrivateRoute>
+            </ProtectedRoute>
           } />
           <Route path="/profile" element={
-            <PrivateRoute>
+            <ProtectedRoute>
               <Layout>
                 <Profile />
               </Layout>
-            </PrivateRoute>
+            </ProtectedRoute>
           } />
           <Route path="/privacy" element={
             <Layout>
