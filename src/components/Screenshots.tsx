@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { Camera, Monitor, Clock, AlertCircle, Search, Filter, User } from 'lucide-react';
 import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { Pagination } from '@mui/material';
+import FaceDetection from './FaceDetection';
 
 interface Screenshot {
   id: string;
@@ -291,7 +292,7 @@ export default function Screenshots() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {currentScreenshots.map((screenshot) => (
+            {currentScreenshots.map((screenshot, index) => (
               <div key={screenshot.id} className="bg-gray-50 rounded-lg overflow-hidden shadow-sm">
                 {screenshot.url ? (
                   <img
@@ -304,6 +305,7 @@ export default function Screenshots() {
                     <span className="text-gray-400">Image not available</span>
                   </div>
                 )}
+                
                 <div className="p-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center">
@@ -325,6 +327,17 @@ export default function Screenshots() {
                     <Clock className="h-4 w-4 mr-1" />
                     {format(parseISO(screenshot.taken_at), 'PPp')}
                   </div>
+                  
+                  {/* Add face detection for the first 4 webcam images */}
+                  {/* {screenshot.type === 'webcam' && screenshot.url && index < 8 && (
+                    <FaceDetection
+                      imageUrl={screenshot.url}
+                      onFaceDetected={(hasFace) => {
+                        // You can handle the face detection result here if needed
+                        // console.log('Face detection result for index', index, ':', hasFace);
+                      }}
+                    />
+                  )} */}
                 </div>
               </div>
             ))}

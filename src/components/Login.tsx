@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../lib/store';
-import { Clock, Mail, Lock, AlertCircle } from 'lucide-react';
+import { Clock, Mail, Lock, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { useMsal } from '@azure/msal-react';
 import { loginRequest } from '../lib/msalConfig';
 import { SilentRequest } from '@azure/msal-browser';
@@ -12,6 +12,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const setUser = useStore((state) => state.setUser);
   const { instance } = useMsal();

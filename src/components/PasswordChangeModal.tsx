@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../lib/store';
@@ -16,6 +16,14 @@ export default function PasswordChangeModal({ isOpen, onClose }: PasswordChangeM
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const setUser = useStore((state) => state.setUser);
+
+  useEffect(() => {
+    if (!isOpen) {
+      // Reset success and error messages when modal closes
+      setSuccess(null);
+      setError(null);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -74,7 +82,6 @@ export default function PasswordChangeModal({ isOpen, onClose }: PasswordChangeM
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      setError(null);
       setSuccess('Password changed successfully!');
 
       // Close modal after 2 seconds

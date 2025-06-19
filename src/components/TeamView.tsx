@@ -337,7 +337,7 @@ export default function TeamView() {
 
             return {
               ...member,
-              current_status: latestEntry?.description === 'Tracking started' ? 'online' : 'offline',
+              current_status: latestEntry?.description === 'Tracking started' || latestEntry?.description === 'Tracking paused' ? 'online' : 'offline',
               latest_activity: latestEntry?.start_time,
             };
           })
@@ -397,7 +397,7 @@ export default function TeamView() {
                 <div className="flex items-center text-sm text-gray-500">
                   <Clock className="h-4 w-4 mr-2" />
                   {member.latest_activity ? (
-                    <span>Last active: {format(parseISO(member.latest_activity), 'PPp')}</span>
+                    <span>Start time: {format(parseISO(member.latest_activity), 'PPp')}</span>
                   ) : (
                     <span>No recent activity</span>
                   )}

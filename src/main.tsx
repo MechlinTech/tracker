@@ -26,11 +26,11 @@ const queryClient = new QueryClient({
 // Report web vitals
 const reportWebVitals = async () => {
   const { getCLS, getFID, getFCP, getLCP, getTTFB } = await import('web-vitals');
-  getCLS(console.log);
-  getFID(console.log);
-  getFCP(console.log);
-  getLCP(console.log);
-  getTTFB(console.log);
+  getCLS(() => {});
+  getFID(() => {});
+  getFCP(() => {});
+  getLCP(() => {});
+  getTTFB(() => {});
 };
 
 createRoot(document.getElementById('root')!).render(

@@ -65,7 +65,7 @@ export default function Reports() {
       
       if (user?.role === 'manager') {
         query = query.eq('manager_id', user.id);
-      } else if (!['admin', 'hr', 'accountant'].includes(user?.role || '')) {
+      } else if (!['admin', 'hr'].includes(user?.role || '')) {
         query = query.eq('id', user?.id);
       }
 
@@ -110,7 +110,7 @@ export default function Reports() {
 
       if (user?.role === 'manager') {
         query = query.in('user_id', managedUserIds);
-      } else if (!['admin', 'hr', 'accountant'].includes(user?.role || '')) {
+      } else if (!['admin', 'hr'].includes(user?.role || '')) {
         query = query.eq('user_id', user?.id);
       }
 
