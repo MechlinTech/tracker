@@ -166,8 +166,8 @@ export default function Reports() {
     });
 
     // 4. Build the 2D array for export
-    const header = ['Employee ID', 'Employee Name', 'Total Time', ...uniqueDates.map(date => format(parseISO(date), 'EEE MMM-d-yy'))];
-    const rows = uniqueUsers.map(user => {
+    const header = ['Sr. No.', 'Employee ID', 'Employee Name', 'Total Time', ...uniqueDates.map(date => format(parseISO(date), 'EEE MMM-d-yy'))];
+    const rows = uniqueUsers.map((user, idx) => {
       let monthlyTotalSeconds = 0;
       uniqueDates.forEach(date => {
         const totalSeconds = userDateHours[user.user_id]?.[date] || 0;
@@ -175,7 +175,7 @@ export default function Reports() {
       });
       const totalHours = Math.floor(monthlyTotalSeconds / 3600);
       const totalMinutes = Math.floor((monthlyTotalSeconds % 3600) / 60);
-      const row = ['--', user.user_name, monthlyTotalSeconds > 0 ? `${totalHours}h ${totalMinutes}m` : '--'];
+      const row = [idx + 1, '--', user.user_name, monthlyTotalSeconds > 0 ? `${totalHours}h ${totalMinutes}m` : '--'];
       uniqueDates.forEach(date => {
         const totalSeconds = userDateHours[user.user_id]?.[date] || 0;
         const hours = Math.floor(totalSeconds / 3600);
