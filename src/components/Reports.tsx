@@ -149,34 +149,67 @@ export default function Reports() {
   };
 
   const exportReport = () => {
-    // 1. Get all unique dates (sorted)
-    const uniqueDates = Array.from(new Set(timeEntries.map(e => e.date))).sort();
-    // 2. Get all unique users
+    // Determine if filters are applied
+    const filtersApplied = filters.users.length > 0 || filters.dateRange.start || filters.dateRange.end;
+
+    // 1. Get the date range for the current month if no filters are applied
+    let dateStart: Date, dateEnd: Date;
+    if (!filtersApplied) {
+      const now = new Date();
+      dateStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      dateEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // up to today only
+    } else {
+      dateStart = filters.dateRange.start ? new Date(filters.dateRange.start) : new Date();
+      dateEnd = filters.dateRange.end ? new Date(filters.dateRange.end) : new Date();
+    }
+
+    // 2. Generate all dates in the range (for current year or filtered range)
+    let allDates: string[] = [];
+    if (!filtersApplied) {
+      let d = new Date(dateStart);
+      while (d <= dateEnd) {
+        allDates.push(format(d, 'yyyy-MM-dd'));
+        d.setDate(d.getDate() + 1);
+      }
+    } else if (filters.dateRange.start && filters.dateRange.end) {
+      // If a date range filter is applied, include all dates in that range
+      let d = new Date(dateStart);
+      while (d <= dateEnd) {
+        allDates.push(format(d, 'yyyy-MM-dd'));
+        d.setDate(d.getDate() + 1);
+      }
+    } else {
+      // Use only dates present in timeEntries if no date range filter
+      allDates = Array.from(new Set(timeEntries.map(e => e.date))).sort();
+    }
+
+    // 3. Get all unique users, sorted by name A-Z
     const uniqueUsers = Array.from(new Set(timeEntries.map(e => e.user_id)))
       .map(user_id => {
         const entry = timeEntries.find(e => e.user_id === user_id);
         return { user_id, user_name: entry ? entry.user_name : '' };
-      });
+      })
+      .sort((a, b) => a.user_name.localeCompare(b.user_name));
 
-    // 3. Build a map: user_id -> { date -> total_hours }
+    // 4. Build a map: user_id -> { date -> total_hours }
     const userDateHours: Record<string, Record<string, number>> = {};
     timeEntries.forEach(entry => {
       if (!userDateHours[entry.user_id]) userDateHours[entry.user_id] = {};
       userDateHours[entry.user_id][entry.date] = entry.total_hours;
     });
 
-    // 4. Build the 2D array for export
-    const header = ['Sr. No.', 'Employee ID', 'Employee Name', 'Total Time', ...uniqueDates.map(date => format(parseISO(date), 'EEE MMM-d-yy'))];
+    // 5. Build the 2D array for export
+    const header = ['Sr. No.', 'Employee ID', 'Employee Name', 'Total Time', ...allDates.map(date => format(parseISO(date), 'EEE MMM-d-yy'))];
     const rows = uniqueUsers.map((user, idx) => {
       let monthlyTotalSeconds = 0;
-      uniqueDates.forEach(date => {
+      allDates.forEach(date => {
         const totalSeconds = userDateHours[user.user_id]?.[date] || 0;
         monthlyTotalSeconds += totalSeconds;
       });
       const totalHours = Math.floor(monthlyTotalSeconds / 3600);
       const totalMinutes = Math.floor((monthlyTotalSeconds % 3600) / 60);
       const row = [idx + 1, '--', user.user_name, monthlyTotalSeconds > 0 ? `${totalHours}h ${totalMinutes}m` : '--'];
-      uniqueDates.forEach(date => {
+      allDates.forEach(date => {
         const totalSeconds = userDateHours[user.user_id]?.[date] || 0;
         const hours = Math.floor(totalSeconds / 3600);
         const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -186,9 +219,11 @@ export default function Reports() {
     });
     const aoa = [header, ...rows];
 
-    // 5. Export using aoa_to_sheet
+    // 6. Export using aoa_to_sheet (no header bold styling)
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!rows'] = ws['!rows'] || [];
+    ws['!rows'][0] = { hpt: 18 }; // Optionally, make header row taller
     XLSX.utils.book_append_sheet(wb, ws, 'Daily Time Report');
     XLSX.writeFile(wb, `daily_time_report_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
   };
