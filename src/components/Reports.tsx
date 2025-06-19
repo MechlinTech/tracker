@@ -149,19 +149,39 @@ export default function Reports() {
   };
 
   const exportReport = () => {
-    const reportData = timeEntries.map(entry => {
-      const totalSeconds = entry.total_hours;
-      const hours = Math.floor(totalSeconds / 3600);
-      const minutes = Math.floor((totalSeconds % 3600) / 60);
-      return {
-        'Date': entry.date,
-        'Employee Name': entry.user_name,
-        'Total Hours': `${hours}h ${minutes}m`
-      };
+    // 1. Get all unique dates (sorted DESC)
+    const uniqueDates = Array.from(new Set(timeEntries.map(e => e.date))).sort((a, b) => b.localeCompare(a));
+    // 2. Get all unique users
+    const uniqueUsers = Array.from(new Set(timeEntries.map(e => e.user_id)))
+      .map(user_id => {
+        const entry = timeEntries.find(e => e.user_id === user_id);
+        return { user_id, user_name: entry ? entry.user_name : '' };
+      });
+
+    // 3. Build a map: user_id -> { date -> total_hours }
+    const userDateHours: Record<string, Record<string, number>> = {};
+    timeEntries.forEach(entry => {
+      if (!userDateHours[entry.user_id]) userDateHours[entry.user_id] = {};
+      userDateHours[entry.user_id][entry.date] = entry.total_hours;
     });
 
+    // 4. Build the 2D array for export
+    const header = ['Employee Name', ...uniqueDates];
+    const rows = uniqueUsers.map(user => {
+      const row = [user.user_name];
+      uniqueDates.forEach(date => {
+        const totalSeconds = userDateHours[user.user_id]?.[date] || 0;
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        row.push(totalSeconds > 0 ? `${hours}h ${minutes}m` : '--');
+      });
+      return row;
+    });
+    const aoa = [header, ...rows];
+
+    // 5. Export using aoa_to_sheet
     const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(reportData);
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
     XLSX.utils.book_append_sheet(wb, ws, 'Daily Time Report');
     XLSX.writeFile(wb, `daily_time_report_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
   };
