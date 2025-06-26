@@ -56,8 +56,12 @@ export default function Reports() {
 
   useEffect(() => {
     fetchUsers();
-    fetchTimeEntries();
   }, [user]);
+
+  useEffect(() => {
+    fetchTimeEntries();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters]);
 
   const fetchUsers = async () => {
     try {
@@ -273,7 +277,6 @@ export default function Reports() {
         end: '',
       },
     });
-    fetchTimeEntries();
   };
 
   // Calculate pagination
