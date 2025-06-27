@@ -239,7 +239,9 @@ export default function Screenshots() {
                       }
                     }}
                     max={new Date().toISOString().split('T')[0]}
-                    className="input"
+                    className="input placeholder-gray-400 rounded-md"
+                      placeholder="mm/dd/yyyy"
+                      style={{ color: !displayFilters.dateRange.start ? '#9ca3af' : undefined }}
                   />
                   <input
                     type="date"
@@ -258,7 +260,9 @@ export default function Screenshots() {
                       }
                     }}
                     max={new Date().toISOString().split('T')[0]}
-                    className="input"
+                    className="input placeholder-gray-400 rounded-md"
+                      placeholder="mm/dd/yyyy"
+                      style={{ color: !displayFilters.dateRange.end ? '#9ca3af' : undefined }}
                   />
                 </div>
                 {/* {error && (
@@ -269,16 +273,16 @@ export default function Screenshots() {
               </div>
               {(user?.role === 'admin' || user?.role === 'manager' || user?.role === 'hr') && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">User Name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
                   <input
                     type="text"
-                    placeholder="Filter by user name..."
+                    placeholder="Filter by username..."
                     value={displayFilters.userName}
                     onChange={(e) => setDisplayFilters({
                       ...displayFilters,
                       userName: e.target.value
                     })}
-                    className="input"
+                    className="input rounded-md"
                   />
                 </div>
               )}
