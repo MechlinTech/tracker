@@ -56,23 +56,34 @@ export default function Reports() {
 
   useEffect(() => {
     fetchUsers();
-    fetchTimeEntries();
   }, [user]);
+
+  useEffect(() => {
+    fetchTimeEntries();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters]);
 
   const fetchUsers = async () => {
     try {
       let query = supabase.from('profiles').select('id, full_name');
-      
+      let usersList = [];
       if (user?.role === 'manager') {
         query = query.eq('manager_id', user.id);
+        const { data, error } = await query;
+        if (error) throw error;
+        // Add manager's own profile to the list
+        usersList = [...(data || []), { id: user.id, full_name: user.full_name }];
       } else if (!['admin', 'hr'].includes(user?.role || '')) {
         query = query.eq('id', user?.id);
+        const { data, error } = await query;
+        if (error) throw error;
+        usersList = data || [];
+      } else {
+        const { data, error } = await query;
+        if (error) throw error;
+        usersList = data || [];
       }
-
-      const { data, error } = await query;
-      if (error) throw error;
-
-      setUsers(data.map(u => ({ value: u.id, label: u.full_name })));
+      setUsers(usersList.map(u => ({ value: u.id, label: u.full_name })));
     } catch (error) {
       console.error('Error fetching users:', error);
     }
@@ -87,6 +98,8 @@ export default function Reports() {
           .select('id')
           .eq('manager_id', user.id);
         managedUserIds = managedUsers?.map(u => u.id) || [];
+        // Add manager's own id
+        managedUserIds = [...managedUserIds, user.id];
       }
 
       let query = supabase
@@ -225,7 +238,28 @@ export default function Reports() {
     ws['!rows'] = ws['!rows'] || [];
     ws['!rows'][0] = { hpt: 18 }; // Optionally, make header row taller
     XLSX.utils.book_append_sheet(wb, ws, 'Daily Time Report');
-    XLSX.writeFile(wb, `daily_time_report_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+
+    // --- Custom file naming logic ---
+    const formatShort = (date: Date) => format(date, 'MMM-d-yy');
+    const today = new Date();
+    const usernames = filters.users
+      .map(
+        uid => users.find(u => u.value === uid)?.label?.toLowerCase().replace(/\s+/g, '')
+      )
+      .filter(Boolean);
+    const hasUserFilter = usernames.length > 0;
+    const hasDateFilter = !!(filters.dateRange.start && filters.dateRange.end);
+    let fileName = '';
+    if (hasUserFilter && !hasDateFilter) {
+      fileName = `${usernames.join('_')}_report_${formatShort(today)}`;
+    } else if (!hasUserFilter && hasDateFilter) {
+      fileName = `report_${formatShort(new Date(filters.dateRange.start))}_${formatShort(new Date(filters.dateRange.end))}`;
+    } else if (hasUserFilter && hasDateFilter) {
+      fileName = `${usernames.join('_')}_${formatShort(new Date(filters.dateRange.start))}_${formatShort(new Date(filters.dateRange.end))}`;
+    } else {
+      fileName = `report_${formatShort(today)}`;
+    }
+    XLSX.writeFile(wb, `${fileName}.xlsx`);
   };
 
   const clearFilters = () => {
@@ -243,7 +277,6 @@ export default function Reports() {
         end: '',
       },
     });
-    fetchTimeEntries();
   };
 
   // Calculate pagination
@@ -272,29 +305,31 @@ export default function Reports() {
 
         <div className="mb-6 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Select Users
-              </label>
-              <Select
-                isMulti
-                options={users}
-                value={displayFilters.users.map(id => users.find(u => u.value === id)).filter((u): u is { value: string; label: string } => u !== undefined)}
-                onChange={(selected) => {
-                  const selectedUsers = selected ? selected.map(s => s.value) : [];
-                  setDisplayFilters({
-                    ...displayFilters,
-                    users: selectedUsers
-                  });
-                  setFilters({
-                    ...filters,
-                    users: selectedUsers
-                  });
-                }}
-                className="basic-multi-select"
-                classNamePrefix="select"
-              />
-            </div>
+            {(user?.role === 'admin' || user?.role === 'manager' || user?.role === 'hr') && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Select Users
+                </label>
+                <Select
+                  isMulti
+                  options={users}
+                  value={displayFilters.users.map(id => users.find(u => u.value === id)).filter((u): u is { value: string; label: string } => u !== undefined)}
+                  onChange={(selected) => {
+                    const selectedUsers = selected ? selected.map(s => s.value) : [];
+                    setDisplayFilters({
+                      ...displayFilters,
+                      users: selectedUsers
+                    });
+                    setFilters({
+                      ...filters,
+                      users: selectedUsers
+                    });
+                  }}
+                  className="basic-multi-select"
+                  classNamePrefix="select"
+                />
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -318,7 +353,9 @@ export default function Reports() {
                     }
                   }}
                   max={new Date().toISOString().split('T')[0]}
-                  className="input"
+                  className="input placeholder-gray-400 rounded-md"
+                    placeholder="mm/dd/yyyy"
+                    style={{ color: !displayFilters.dateRange.start ? '#9ca3af' : undefined }}
                 />
                 <input
                   type="date"
@@ -337,7 +374,9 @@ export default function Reports() {
                     }
                   }}
                   max={new Date().toISOString().split('T')[0]}
-                  className="input"
+                  className="input placeholder-gray-400 rounded-md"
+                  placeholder="mm/dd/yyyy"
+                  style={{ color: !displayFilters.dateRange.end ? '#9ca3af' : undefined }}
                 />
               </div>
               {error && (
