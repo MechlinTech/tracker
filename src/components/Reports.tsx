@@ -73,7 +73,7 @@ export default function Reports() {
         if (error) throw error;
         // Add manager's own profile to the list
         usersList = [...(data || []), { id: user.id, full_name: user.full_name }];
-      } else if (!['admin', 'hr'].includes(user?.role || '')) {
+      } else if (!['admin', 'hr', 'accountant'].includes(user?.role || '')) {
         query = query.eq('id', user?.id);
         const { data, error } = await query;
         if (error) throw error;
@@ -123,7 +123,7 @@ export default function Reports() {
 
       if (user?.role === 'manager') {
         query = query.in('user_id', managedUserIds);
-      } else if (!['admin', 'hr'].includes(user?.role || '')) {
+      } else if (!['admin', 'hr', 'accountant'].includes(user?.role || '')) {
         query = query.eq('user_id', user?.id);
       }
 
@@ -294,18 +294,18 @@ export default function Reports() {
       <div className="bg-white shadow rounded-lg p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-gray-900">Daily Time Reports</h2>
-          <button
-            onClick={exportReport}
-            className="btn-primary"
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Export Report
-          </button>
+            <button
+              onClick={exportReport}
+              className="btn-primary"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export Report
+            </button>
         </div>
 
         <div className="mb-6 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {(user?.role === 'admin' || user?.role === 'manager' || user?.role === 'hr') && (
+            {(user?.role === 'admin' || user?.role === 'manager' || user?.role === 'hr' || user?.role === 'accountant') && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Select Users
