@@ -528,6 +528,7 @@ export default function AdminPanel() {
                     value={newUser.manager_id || 'none'}
                     onChange={(e) => setNewUser({ ...newUser, manager_id: e.target.value === 'none' ? null : e.target.value })}
                     className="block w-full rounded-md border border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm pl-3 pr-10 py-2"
+                    disabled={newUser.role === 'admin'}
                   >
                     <option value="none">No Manager</option>
                     {managers.map((manager) => (
