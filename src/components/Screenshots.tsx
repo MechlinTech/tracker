@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
-import { Camera, Monitor, Clock, AlertCircle, Search, Filter, User } from 'lucide-react';
+import { Camera, Monitor, Clock, AlertCircle, Search, Filter, User, ArrowLeft, ArrowRight, X } from 'lucide-react';
 import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { Pagination } from '@mui/material';
 import FaceDetection from './FaceDetection';
@@ -61,6 +61,23 @@ export default function Screenshots() {
     },
     userName: '',
   });
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalIndex, setModalIndex] = useState<number | null>(null);
+
+  const openModal = (index: number) => {
+    setModalIndex(index);
+    setModalOpen(true);
+  };
+  const closeModal = () => {
+    setModalOpen(false);
+    setModalIndex(null);
+  };
+  const showPrev = () => {
+    if (modalIndex !== null && modalIndex > 0) setModalIndex(modalIndex - 1);
+  };
+  const showNext = () => {
+    if (modalIndex !== null && modalIndex < filteredScreenshots.length - 1) setModalIndex(modalIndex + 1);
+  };
 
   useEffect(() => {
     fetchScreenshots();
@@ -302,7 +319,8 @@ export default function Screenshots() {
                   <img
                     src={screenshot.url}
                     alt={`Screenshot from ${format(parseISO(screenshot.taken_at), 'PPp')}`}
-                    className="w-full h-48 object-cover"
+                    className="w-full h-48 object-cover cursor-pointer"
+                    onClick={() => openModal(startIndex + index)}
                   />
                 ) : (
                   <div className="w-full h-48 flex items-center justify-center bg-gray-100">
@@ -372,6 +390,62 @@ export default function Screenshots() {
           </div>
         )}
       </div>
+
+      {/* Modal for high-res screenshot viewer */}
+      {modalOpen && modalIndex !== null && filteredScreenshots[modalIndex] && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80"
+          onClick={closeModal}
+        >
+          <div
+            className="relative max-w-6xl w-full flex flex-col items-center px-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              className="absolute top-6 right-6 text-white bg-black bg-opacity-50 rounded-full p-3 hover:bg-opacity-80"
+              onClick={closeModal}
+              aria-label="Close"
+            >
+              <X className="h-7 w-7" />
+            </button>
+            <div className="flex items-center justify-center w-full">
+              <button
+                className="p-3 text-white bg-black bg-opacity-50 rounded-full hover:bg-opacity-80 disabled:opacity-30"
+                onClick={showPrev}
+                disabled={modalIndex === 0}
+                aria-label="Previous"
+              >
+                <ArrowLeft className="h-10 w-10" />
+              </button>
+              <img
+                src={filteredScreenshots[modalIndex].url}
+                alt={`Screenshot from ${format(parseISO(filteredScreenshots[modalIndex].taken_at), 'PPp')}`}
+                className="max-h-[90vh] max-w-6xl object-contain mx-12 rounded shadow-2xl border-4 border-white"
+                style={{ background: '#fff' }}
+              />
+              <button
+                className="p-3 text-white bg-black bg-opacity-50 rounded-full hover:bg-opacity-80 disabled:opacity-30"
+                onClick={showNext}
+                disabled={modalIndex === filteredScreenshots.length - 1}
+                aria-label="Next"
+              >
+                <ArrowRight className="h-10 w-10" />
+              </button>
+            </div>
+            <div className="mt-6 text-white text-center">
+              <div className="text-xl font-semibold">
+                {filteredScreenshots[modalIndex].user.full_name}
+              </div>
+              <div className="text-base">
+                {format(parseISO(filteredScreenshots[modalIndex].taken_at), 'PPp')}
+              </div>
+              <div className="text-base capitalize">
+                {filteredScreenshots[modalIndex].type} capture
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
