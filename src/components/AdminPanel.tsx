@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { supabase, supabaseAdmin } from '../lib/supabase';
-import { Settings, Users, AlertCircle, Clock, Monitor, Download, Search, Plus, X, Eye, EyeOff, Trash2, Key, Copy, CheckCircle, Pencil } from 'lucide-react';
+import { Settings, Users, AlertCircle, Clock, Monitor, Download, Search, Plus, X, Eye, EyeOff, Trash2, Key, Copy, CheckCircle, Pencil, Mail } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { format, parseISO } from 'date-fns';
 import { Pagination } from '@mui/material';
 import { adminService } from '../services/adminService';
+import { useStore } from '../lib/store';
 
 interface User {
   id: string;
   full_name: string;
+  email: string;
   role: 'employee' | 'manager' | 'admin' | 'hr' | 'accountant';
   manager_id: string | null;
   team: string;
@@ -48,6 +50,7 @@ const USER_ROLES = [
 ];
 
 export default function AdminPanel() {
+  const currentUser = useStore((state) => state.user);
   const [users, setUsers] = useState<User[]>([]);
   const [managers, setManagers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -100,6 +103,16 @@ export default function AdminPanel() {
 
       if (profilesError) throw profilesError;
 
+      // Get emails from auth.users using admin client
+      const { data: authUsers, error: authError } = await supabaseAdmin.auth.admin.listUsers();
+      if (authError) throw authError;
+
+      // Create a map of user IDs to emails
+      const emailMap = new Map();
+      authUsers.users?.forEach(authUser => {
+        emailMap.set(authUser.id, authUser.email);
+      });
+
       // Get employee managers relationships
       const { data: employeeManagers, error: employeeManagersError } = await supabase
         .from('employee_managers')
@@ -144,6 +157,7 @@ export default function AdminPanel() {
 
         return {
           ...user,
+          email: emailMap.get(user.id) || '',
           time_entries_count: userTimeEntries.length,
           screenshots_count: userScreenshots.length,
           managers
@@ -902,23 +916,39 @@ export default function AdminPanel() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-center">
-                    <div className="flex justify-center space-x-3">
+                    <div className="flex justify-center space-x-1">
+                      {user.email && currentUser?.role === 'admin' && (
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(user.email);
+                            setSuccessMessage(`Email copied to clipboard: ${user.email}`);
+                            setTimeout(() => setSuccessMessage(null), 3000);
+                          }}
+                          className="p-1.5 rounded-md bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 relative group transition-colors"
+                          title={`Email: ${user.email}`}
+                        >
+                          <Mail className="h-4 w-4" />
+                          <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-900 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                            {user.email}
+                          </span>
+                        </button>
+                      )}
                       <button
                         onClick={() => handleEditName(user)}
-                        className="p-2 rounded-md bg-indigo-50 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-700 relative group transition-colors"
+                        className="p-1.5 rounded-md bg-indigo-50 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-700 relative group transition-colors"
                         title="Edit Username"
                       >
-                        <Pencil className="h-5 w-5" />
+                        <Pencil className="h-4 w-4" />
                         <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-900 rounded opacity-0 group-hover:opacity-100 transition-opacity">
                           Edit Username
                         </span>
                       </button>
                       <button
                         onClick={() => handleAssignManagers(user)}
-                        className="p-2 rounded-md bg-green-50 text-green-600 hover:bg-green-100 hover:text-green-700 relative group transition-colors"
+                        className="p-1.5 rounded-md bg-green-50 text-green-600 hover:bg-green-100 hover:text-green-700 relative group transition-colors"
                         title="Assign Managers"
                       >
-                        <Users className="h-5 w-5" />
+                        <Users className="h-4 w-4" />
                         <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-900 rounded opacity-0 group-hover:opacity-100 transition-opacity">
                           Assign Managers
                         </span>
@@ -929,10 +959,10 @@ export default function AdminPanel() {
                           setShowPasswordChange(true);
                           generateRandomPassword();
                         }}
-                        className="p-2 rounded-md bg-indigo-50 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-900 relative group transition-colors"
+                        className="p-1.5 rounded-md bg-indigo-50 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-900 relative group transition-colors"
                         title="Change Password"
                       >
-                        <Key className="h-5 w-5" />
+                        <Key className="h-4 w-4" />
                         <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-900 rounded opacity-0 group-hover:opacity-100 transition-opacity">
                           Change Password
                         </span>
@@ -942,10 +972,10 @@ export default function AdminPanel() {
                           setUserToDelete(user);
                           setShowDeleteConfirm(true);
                         }}
-                        className="p-2 rounded-md bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-900 relative group transition-colors"
+                        className="p-1.5 rounded-md bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-900 relative group transition-colors"
                         title="Delete User"
                       >
-                        <Trash2 className="h-5 w-5" />
+                        <Trash2 className="h-4 w-4" />
                         <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-900 rounded opacity-0 group-hover:opacity-100 transition-opacity">
                           Delete User
                         </span>
