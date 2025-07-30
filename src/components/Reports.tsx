@@ -250,6 +250,7 @@ export default function Reports() {
     const hasUserFilter = usernames.length > 0;
     const hasDateFilter = !!(filters.dateRange.start && filters.dateRange.end);
     let fileName = '';
+    
     if (hasUserFilter && !hasDateFilter) {
       fileName = `${usernames.join('_')}_report_${formatShort(today)}`;
     } else if (!hasUserFilter && hasDateFilter) {
@@ -257,7 +258,10 @@ export default function Reports() {
     } else if (hasUserFilter && hasDateFilter) {
       fileName = `${usernames.join('_')}_${formatShort(new Date(filters.dateRange.start))}_${formatShort(new Date(filters.dateRange.end))}`;
     } else {
-      fileName = `report_${formatShort(today)}`;
+      // Monthly report format when no filters are applied
+      const monthName = format(today, 'MMMM');
+      const year = format(today, 'yyyy');
+      fileName = `Monthly_Report_${monthName}_${year}`;
     }
     XLSX.writeFile(wb, `${fileName}.xlsx`);
   };
