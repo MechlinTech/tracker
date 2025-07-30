@@ -239,5 +239,83 @@ export const adminService = {
         error: error instanceof Error ? error.message : 'An error occurred while resetting the password'
       };
     }
+  },
+
+  async assignManagers(employeeId: string, managers: Array<{ managerId: string; managerType: string }>): Promise<AdminResponse> {
+    try {
+      // First check if the current user is an admin
+      const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+
+      if (!currentUser) throw new Error('No authenticated user');
+
+      // Get the current user's profile to check if they're an admin
+      const { data: currentUserProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', currentUser.id)
+        .single();
+
+      if (profileError) throw profileError;
+      if (!currentUserProfile) throw new Error('No profile found');
+      if (currentUserProfile.role !== 'admin') {
+        throw new Error('Only administrators can assign managers');
+      }
+
+      // Remove existing manager relationships for this employee
+      const { error: deleteError } = await supabase
+        .from('employee_managers')
+        .delete()
+        .eq('employee_id', employeeId);
+
+      if (deleteError) throw deleteError;
+
+      // Insert new manager relationships
+      if (managers.length > 0) {
+        const managerData = managers.map(m => ({
+          employee_id: employeeId,
+          manager_id: m.managerId,
+          manager_type: m.managerType
+        }));
+
+        const { error: insertError } = await supabase
+          .from('employee_managers')
+          .insert(managerData);
+
+        if (insertError) throw insertError;
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error in assignManagers:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'An error occurred while assigning managers'
+      };
+    }
+  },
+
+  async getEmployeeManagers(employeeId: string): Promise<Array<{ managerId: string; managerName: string; managerType: string }>> {
+    try {
+      const { data, error } = await supabase
+        .from('employee_managers')
+        .select(`
+          manager_id,
+          manager_type,
+          profiles!employee_managers_manager_id_fkey(full_name)
+        `)
+        .eq('employee_id', employeeId);
+
+      if (error) throw error;
+
+      return (data || []).map(item => ({
+        managerId: item.manager_id,
+        managerName: (item.profiles as any).full_name,
+        managerType: item.manager_type
+      }));
+    } catch (error) {
+      console.error('Error in getEmployeeManagers:', error);
+      return [];
+    }
   }
 }; 

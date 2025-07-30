@@ -318,15 +318,54 @@ export default function TeamView() {
   useEffect(() => {
     async function fetchTeamMembers() {
       try {
-        const { data: members, error: membersError } = await supabase
-          .from('profiles')
-          .select('id, full_name')
-          .eq('manager_id', user?.id);
+        let members: any[] = [];
 
-        if (membersError) throw membersError;
+        if (user?.role === 'manager' || user?.role === 'hr') {
+          // Get managed users through the employee_managers table
+          const { data: managedUsers, error: managedUsersError } = await supabase
+            .from('employee_managers')
+            .select(`
+              employee_id,
+              profiles!employee_managers_employee_id_fkey(id, full_name)
+            `)
+            .eq('manager_id', user.id);
+
+          if (managedUsersError) throw managedUsersError;
+
+          // Also get users from legacy manager_id field
+          const { data: legacyManagedUsers, error: legacyError } = await supabase
+            .from('profiles')
+            .select('id, full_name')
+            .eq('manager_id', user.id);
+
+          if (legacyError) throw legacyError;
+
+          // Combine both sources and remove duplicates
+          const allMembers = [
+            ...(managedUsers?.map(u => u.profiles) || []),
+            ...(legacyManagedUsers || [])
+          ];
+
+          // Remove duplicates based on id
+          const uniqueMembers = allMembers.filter((member, index, self) => 
+            index === self.findIndex(m => m.id === member.id)
+          );
+
+          members = uniqueMembers;
+        } else {
+          // For regular employees, show only themselves
+          const { data: userProfile, error: userError } = await supabase
+            .from('profiles')
+            .select('id, full_name')
+            .eq('id', user?.id)
+            .single();
+
+          if (userError) throw userError;
+          members = userProfile ? [userProfile] : [];
+        }
 
         const membersWithStatus = await Promise.all(
-          (members || []).map(async (member) => {
+          members.map(async (member) => {
             const { data: latestEntry } = await supabase
               .from('time_entries')
               .select('*')
@@ -367,10 +406,12 @@ export default function TeamView() {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center">
             <Users className="h-8 w-8 text-indigo-600" />
-            <h2 className="ml-3 text-2xl font-bold text-gray-900">Team Overview</h2>
+            <h2 className="ml-3 text-2xl font-bold text-gray-900">
+              {user?.role === 'hr' ? 'HR Team Overview' : 'Team Overview'}
+            </h2>
           </div>
           <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">
-            {teamMembers.length} Team Members
+            {teamMembers.length} {user?.role === 'hr' ? 'Assigned Employees' : 'Team Members'}
           </span>
         </div>
 

@@ -39,7 +39,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       name: 'Team', 
       path: '/team', 
       icon: Users, 
-      show: user?.role === 'manager' || user?.role === 'admin' 
+      show: user?.role === 'manager' || user?.role === 'admin' || user?.role === 'hr'
     },
     { 
       name: 'Screenshots', 
