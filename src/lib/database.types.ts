@@ -41,6 +41,32 @@ export interface Database {
           updated_at?: string
         }
       }
+      employee_managers: {
+        Row: {
+          id: string
+          employee_id: string
+          manager_id: string
+          manager_type: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          employee_id: string
+          manager_id: string
+          manager_type?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          employee_id?: string
+          manager_id?: string
+          manager_type?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
       time_entries: {
         Row: {
           id: string

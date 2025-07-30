@@ -14,6 +14,11 @@ interface User {
   team: string;
   time_entries_count: number;
   screenshots_count: number;
+  managers?: Array<{
+    managerId: string;
+    managerName: string;
+    managerType: string;
+  }>;
 }
 
 interface NewUser {
@@ -64,6 +69,8 @@ export default function AdminPanel() {
     team: '',
     customTeam: ''
   });
+  const [selectedManagers, setSelectedManagers] = useState<string[]>([]);
+  const [managerTypes, setManagerTypes] = useState<{ [key: string]: string }>({});
   const [showPasswordChange, setShowPasswordChange] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [generatedPassword, setGeneratedPassword] = useState('');
@@ -74,6 +81,10 @@ export default function AdminPanel() {
   const [userToEditName, setUserToEditName] = useState<User | null>(null);
   const [editFullName, setEditFullName] = useState('');
   const [editNameError, setEditNameError] = useState<string | null>(null);
+  const [editingTeams, setEditingTeams] = useState<{ [key: string]: { team: string; customTeam: string } }>({});
+  const [showManagerAssignmentModal, setShowManagerAssignmentModal] = useState(false);
+  const [userToAssignManagers, setUserToAssignManagers] = useState<User | null>(null);
+  const [assignedManagers, setAssignedManagers] = useState<Array<{ managerId: string; managerName: string; managerType: string }>>([]);
 
   useEffect(() => {
     fetchUsers();
@@ -88,6 +99,18 @@ export default function AdminPanel() {
         .order('full_name');
 
       if (profilesError) throw profilesError;
+
+      // Get employee managers relationships
+      const { data: employeeManagers, error: employeeManagersError } = await supabase
+        .from('employee_managers')
+        .select(`
+          employee_id,
+          manager_id,
+          manager_type,
+          profiles!employee_managers_manager_id_fkey(full_name)
+        `);
+
+      if (employeeManagersError) throw employeeManagersError;
 
       // Get time entries count
       const { data: timeEntries, error: timeError } = await supabase
@@ -111,15 +134,24 @@ export default function AdminPanel() {
           return timeEntry?.user_id === user.id;
         }) || [];
 
+        // Get managers for this user
+        const userManagers = employeeManagers?.filter(em => em.employee_id === user.id) || [];
+        const managers = userManagers.map(em => ({
+          managerId: em.manager_id,
+          managerName: (em.profiles as any).full_name,
+          managerType: em.manager_type
+        }));
+
         return {
           ...user,
           time_entries_count: userTimeEntries.length,
-          screenshots_count: userScreenshots.length
+          screenshots_count: userScreenshots.length,
+          managers
         };
       }) || [];
 
       const managersData = processedUsers.filter(user => 
-        user.role === 'manager' || user.role === 'admin'
+        user.role === 'manager' || user.role === 'admin' || user.role === 'hr'
       );
       
       setUsers(processedUsers);
@@ -167,14 +199,47 @@ export default function AdminPanel() {
 
   const handleTeamChange = async (userId: string, newTeam: string) => {
     try {
-      await adminService.updateUserTeam(userId, newTeam);
+      const teamToSave = newTeam === 'Other' ? editingTeams[userId]?.customTeam || '' : newTeam;
+      await adminService.updateUserTeam(userId, teamToSave);
       setUsers(users.map(user =>
-        user.id === userId ? { ...user, team: newTeam } : user
+        user.id === userId ? { ...user, team: teamToSave } : user
       ));
+      // Clear editing state for this user
+      setEditingTeams(prev => {
+        const newState = { ...prev };
+        delete newState[userId];
+        return newState;
+      });
     } catch (error) {
       console.error('Error updating team:', error);
       setError('Failed to update team. Please try again.');
     }
+  };
+
+  const handleTeamSelectChange = (userId: string, selectedTeam: string) => {
+    const currentUser = users.find(u => u.id === userId);
+    const isExistingCustomTeam = currentUser?.team && !PREDEFINED_TEAMS.includes(currentUser.team);
+    
+    // If the selected team is the same as the current team, we're just starting to edit
+    const isStartingEdit = selectedTeam === currentUser?.team;
+    
+    setEditingTeams(prev => ({
+      ...prev,
+      [userId]: {
+        team: selectedTeam,
+        customTeam: selectedTeam === 'Other' ? (isExistingCustomTeam ? currentUser.team : '') : ''
+      }
+    }));
+  };
+
+  const handleCustomTeamChange = (userId: string, customTeam: string) => {
+    setEditingTeams(prev => ({
+      ...prev,
+      [userId]: {
+        ...prev[userId],
+        customTeam
+      }
+    }));
   };
 
   const handleCreateUser = async (e: React.FormEvent) => {
@@ -378,6 +443,62 @@ export default function AdminPanel() {
     } catch (error) {
       setEditNameError('Failed to update username. Please try again.');
     }
+  };
+
+  const handleAssignManagers = (user: User) => {
+    setUserToAssignManagers(user);
+    setAssignedManagers(user.managers || []);
+    setShowManagerAssignmentModal(true);
+  };
+
+  const handleSaveManagerAssignment = async () => {
+    if (!userToAssignManagers) return;
+
+    try {
+      const result = await adminService.assignManagers(
+        userToAssignManagers.id,
+        assignedManagers.map(m => ({
+          managerId: m.managerId,
+          managerType: m.managerType
+        }))
+      );
+
+      if (!result.success) {
+        setError(result.error || 'Failed to assign managers. Please try again.');
+        return;
+      }
+
+      // Update local state
+      setUsers(users.map(user =>
+        user.id === userToAssignManagers.id ? { ...user, managers: assignedManagers } : user
+      ));
+
+      setShowManagerAssignmentModal(false);
+      setUserToAssignManagers(null);
+      setAssignedManagers([]);
+      setError(null);
+      setSuccessMessage(`Managers assigned successfully for ${userToAssignManagers.full_name}`);
+      
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } catch (error) {
+      console.error('Error assigning managers:', error);
+      setError('Failed to assign managers. Please try again.');
+    }
+  };
+
+  const addManager = (managerId: string, managerType: string) => {
+    const manager = managers.find(m => m.id === managerId);
+    if (manager && !assignedManagers.find(m => m.managerId === managerId)) {
+      setAssignedManagers([...assignedManagers, {
+        managerId,
+        managerName: manager.full_name,
+        managerType
+      }]);
+    }
+  };
+
+  const removeManager = (managerId: string) => {
+    setAssignedManagers(assignedManagers.filter(m => m.managerId !== managerId));
   };
 
   const filteredUsers = users.filter(user =>
@@ -717,24 +838,56 @@ export default function AdminPanel() {
                     </select>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <select
-                      value={user.team || ''}
-                      onChange={(e) => handleTeamChange(user.id, e.target.value)}
-                      className="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                    >
-                      <option value="">Select Team</option>
-                      {PREDEFINED_TEAMS.map((team) => (
-                        <option key={team} value={team}>{team}</option>
-                      ))}
-                    </select>
-                    {/* {user.team && !PREDEFINED_TEAMS.includes(user.team) && (
-                      <input
-                        type="text"
-                        value={user.team}
-                        onChange={(e) => handleTeamChange(user.id, e.target.value)}
-                        className="mt-2 block w-full rounded-md border border-gray-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2"
-                      />
-                    )} */}
+                    <div className="space-y-2">
+                      <select
+                        value={editingTeams[user.id]?.team || (user.team && !PREDEFINED_TEAMS.includes(user.team) ? 'Other' : user.team) || ''}
+                        onChange={(e) => handleTeamSelectChange(user.id, e.target.value)}
+                        onFocus={() => {
+                          if (!editingTeams[user.id]) {
+                            handleTeamSelectChange(user.id, user.team || '');
+                          }
+                        }}
+                        className={`block w-full pl-3 pr-10 py-2 text-base border focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md ${
+                          editingTeams[user.id] 
+                            ? 'border-blue-300 bg-blue-50' 
+                            : 'border-gray-300'
+                        }`}
+                      >
+                        <option value="">Select Team</option>
+                        {PREDEFINED_TEAMS.map((team) => (
+                          <option key={team} value={team}>{team}</option>
+                        ))}
+                      </select>
+                      {(editingTeams[user.id]?.team === 'Other' || (user.team && !PREDEFINED_TEAMS.includes(user.team))) && (
+                        <input
+                          type="text"
+                          placeholder="Enter custom team name"
+                          value={editingTeams[user.id]?.customTeam || (user.team && !PREDEFINED_TEAMS.includes(user.team) ? user.team : '')}
+                          onChange={(e) => handleCustomTeamChange(user.id, e.target.value)}
+                          className="block w-full rounded-md border border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2"
+                        />
+                      )}
+                      {editingTeams[user.id] && (
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleTeamChange(user.id, editingTeams[user.id].team)}
+                            className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                          >
+                            Save
+                          </button>
+                          <button
+                            onClick={() => setEditingTeams(prev => {
+                              const newState = { ...prev };
+                              delete newState[user.id];
+                              return newState;
+                            })}
+                            className="px-2 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="space-y-1">
@@ -758,6 +911,16 @@ export default function AdminPanel() {
                         <Pencil className="h-5 w-5" />
                         <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-900 rounded opacity-0 group-hover:opacity-100 transition-opacity">
                           Edit Username
+                        </span>
+                      </button>
+                      <button
+                        onClick={() => handleAssignManagers(user)}
+                        className="p-2 rounded-md bg-green-50 text-green-600 hover:bg-green-100 hover:text-green-700 relative group transition-colors"
+                        title="Assign Managers"
+                      >
+                        <Users className="h-5 w-5" />
+                        <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-900 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                          Assign Managers
                         </span>
                       </button>
                       <button
@@ -966,6 +1129,120 @@ export default function AdminPanel() {
                   className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
                 >
                   Save
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Manager Assignment Modal */}
+      {showManagerAssignmentModal && userToAssignManagers && (
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg font-medium text-gray-900">
+                Assign Managers for {userToAssignManagers.full_name}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowManagerAssignmentModal(false);
+                  setUserToAssignManagers(null);
+                  setAssignedManagers([]);
+                }}
+                className="text-gray-400 hover:text-gray-500"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-6">
+              {/* Current Managers */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-3">Current Managers</h4>
+                {assignedManagers.length === 0 ? (
+                  <p className="text-sm text-gray-500">No managers assigned</p>
+                ) : (
+                  <div className="space-y-2">
+                    {assignedManagers.map((manager, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+                        <div>
+                          <span className="font-medium text-gray-900">{manager.managerName}</span>
+                          <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">
+                            {manager.managerType}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => removeManager(manager.managerId)}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Add New Manager */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-3">Add Manager</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Select Manager</label>
+                    <select
+                      className="block w-full rounded-md border border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2"
+                      onChange={(e) => {
+                        const managerId = e.target.value;
+                        if (managerId && managerId !== '') {
+                          addManager(managerId, 'primary');
+                          e.target.value = '';
+                        }
+                      }}
+                    >
+                      <option value="">Choose a manager...</option>
+                      {managers
+                        .filter(manager => !assignedManagers.find(m => m.managerId === manager.id))
+                        .map(manager => (
+                          <option key={manager.id} value={manager.id}>
+                            {manager.full_name} ({manager.role})
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Manager Type</label>
+                    <select
+                      className="block w-full rounded-md border border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2"
+                      onChange={(e) => {
+                        // This will be handled by the manager selection
+                      }}
+                      defaultValue="primary"
+                    >
+                      <option value="primary">Primary Manager</option>
+                      <option value="secondary">Secondary Manager</option>
+                      <option value="hr">HR Manager</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-4 border-t">
+                <button
+                  onClick={() => {
+                    setShowManagerAssignmentModal(false);
+                    setUserToAssignManagers(null);
+                    setAssignedManagers([]);
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveManagerAssignment}
+                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
+                >
+                  Save Assignment
                 </button>
               </div>
             </div>

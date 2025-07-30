@@ -124,7 +124,7 @@ export default function App() {
             </ProtectedRoute>
           } />
           <Route path="/team" element={
-            <ProtectedRoute allowedRoles={['manager', 'admin']}>
+            <ProtectedRoute allowedRoles={['manager', 'admin', 'hr']}>
               <Layout>
                 <TeamView />
               </Layout>
