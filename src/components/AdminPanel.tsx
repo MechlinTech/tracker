@@ -1217,7 +1217,7 @@ export default function AdminPanel() {
               {/* Add New Manager */}
               <div>
                 <h4 className="text-sm font-medium text-gray-700 mb-3">Add Manager</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Select Manager</label>
                     <select
@@ -1240,7 +1240,7 @@ export default function AdminPanel() {
                         ))}
                     </select>
                   </div>
-                  <div>
+                  {/* <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Manager Type</label>
                     <select
                       className="block w-full rounded-md border border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2"
@@ -1253,7 +1253,7 @@ export default function AdminPanel() {
                       <option value="secondary">Secondary Manager</option>
                       <option value="hr">HR Manager</option>
                     </select>
-                  </div>
+                  </div> */}
                 </div>
               </div>
 

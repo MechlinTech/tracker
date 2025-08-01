@@ -45,6 +45,14 @@ export default function Reports() {
     },
   });
 
+  // Calculate pagination
+  const totalPages = Math.ceil(timeEntries.length / itemsPerPage);
+  // Ensure current page doesn't exceed total pages
+  const safeCurrentPage = totalPages > 0 ? Math.min(currentPage, totalPages) : 1;
+  const startIndex = (safeCurrentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentEntries = timeEntries.slice(startIndex, endIndex);
+
   const validateDateRange = (start: string, end: string): boolean => {
     if (start && end && new Date(start) > new Date(end)) {
       setError('Start date cannot be greater than end date');
@@ -60,8 +68,17 @@ export default function Reports() {
 
   useEffect(() => {
     fetchTimeEntries();
+    // Reset pagination to page 1 when filters change
+    setCurrentPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
+
+  // Adjust current page if it exceeds total pages after data changes
+  useEffect(() => {
+    if (totalPages > 0 && currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
 
   const fetchUsers = async () => {
     try {
@@ -144,7 +161,7 @@ export default function Reports() {
           dailySummaries.push({
             date,
             user_id: entry.user_id,
-            user_name: entry.profiles.full_name,
+            user_name: (entry.profiles as any)?.full_name || 'Unknown User',
             total_hours: entry.duration || 0
           });
         }
@@ -281,13 +298,8 @@ export default function Reports() {
         end: '',
       },
     });
+    setCurrentPage(1);
   };
-
-  // Calculate pagination
-  const totalPages = Math.ceil(timeEntries.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentEntries = timeEntries.slice(startIndex, endIndex);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -398,7 +410,10 @@ export default function Reports() {
               Clear Filters
             </button>
             <button
-              onClick={fetchTimeEntries}
+              onClick={() => {
+                setCurrentPage(1);
+                fetchTimeEntries();
+              }}
               className="btn-primary"
             >
               <Filter className="h-4 w-4 mr-2" />
@@ -449,7 +464,7 @@ export default function Reports() {
             <div className="flex items-center justify-center px-4 py-3 bg-white border-t border-gray-200">
               <Pagination 
                 count={totalPages}
-                page={currentPage}
+                page={safeCurrentPage}
                 onChange={(_, page) => handlePageChange(page)}
                 color="primary"
                 showFirstButton
