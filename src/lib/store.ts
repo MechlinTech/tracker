@@ -15,6 +15,7 @@ interface AuthState {
   notifications: any[];
   isInitialized: boolean;
   cache: CacheState;
+  sessionExpired: boolean;
   setUser: (user: Profile | null) => void;
   setNotifications: (notifications: any[]) => void;
   addNotification: (notification: any) => void;
@@ -25,6 +26,8 @@ interface AuthState {
   getCacheItem: (key: string, ttl?: number) => any | null;
   clearCache: () => void;
   initialize: () => Promise<void>;
+  setSessionExpired: (expired: boolean) => void;
+  handleSessionExpiration: () => void;
 }
 
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
@@ -36,6 +39,7 @@ export const useStore = create<AuthState>()(
       notifications: [],
       isInitialized: false,
       cache: {},
+      sessionExpired: false,
 
       initialize: async () => {
         if (get().isInitialized) return;
@@ -143,7 +147,25 @@ export const useStore = create<AuthState>()(
         return item.data;
       },
 
-      clearCache: () => set({ cache: {} })
+      clearCache: () => set({ cache: {} }),
+
+      setSessionExpired: (expired) => set({ sessionExpired: expired }),
+
+      handleSessionExpiration: () => {
+        set({ 
+          user: null, 
+          notifications: [], 
+          cache: {}, 
+          sessionExpired: true 
+        });
+        
+        // Clear any stored auth tokens
+        localStorage.removeItem('supabase.auth.token');
+        sessionStorage.removeItem('supabase.auth.token');
+        
+        // Redirect to login page
+        window.location.href = '/login';
+      }
     }),
     {
       name: 'time-tracker-storage',
