@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
+import { handleApiCall, withAuthCheck } from '../lib/apiUtils';
 import { Download, Search, Filter } from 'lucide-react';
 import Select from 'react-select';
 import { format, parseISO, startOfDay, endOfDay } from 'date-fns';
@@ -81,33 +82,37 @@ export default function Reports() {
   }, [totalPages, currentPage]);
 
   const fetchUsers = async () => {
-    try {
+    const usersList = await withAuthCheck(async () => {
       let query = supabase.from('profiles').select('id, full_name');
-      let usersList = [];
+      let result = [];
+      
       if (user?.role === 'manager') {
         query = query.eq('manager_id', user.id);
         const { data, error } = await query;
         if (error) throw error;
         // Add manager's own profile to the list
-        usersList = [...(data || []), { id: user.id, full_name: user.full_name }];
+        result = [...(data || []), { id: user.id, full_name: user.full_name }];
       } else if (!['admin', 'hr', 'accountant'].includes(user?.role || '')) {
         query = query.eq('id', user?.id);
         const { data, error } = await query;
         if (error) throw error;
-        usersList = data || [];
+        result = data || [];
       } else {
         const { data, error } = await query;
         if (error) throw error;
-        usersList = data || [];
+        result = data || [];
       }
+      
+      return result;
+    });
+
+    if (usersList) {
       setUsers(usersList.map(u => ({ value: u.id, label: u.full_name })));
-    } catch (error) {
-      console.error('Error fetching users:', error);
     }
   };
 
   const fetchTimeEntries = async () => {
-    try {
+    const data = await withAuthCheck(async () => {
       let managedUserIds: string[] = [];
       if (user?.role === 'manager') {
         const { data: managedUsers } = await supabase
@@ -146,10 +151,13 @@ export default function Reports() {
 
       const { data, error } = await query;
       if (error) throw error;
+      return data;
+    });
 
+    if (data) {
       // Group and sum by date and user
       const dailySummaries: DailyTimeEntry[] = [];
-      data?.forEach(entry => {
+      data.forEach(entry => {
         const date = format(parseISO(entry.start_time), 'yyyy-MM-dd');
         const existingEntry = dailySummaries.find(
           summary => summary.date === date && summary.user_id === entry.user_id
@@ -170,12 +178,11 @@ export default function Reports() {
       // Sort by date descending
       dailySummaries.sort((a, b) => b.date.localeCompare(a.date));
       setTimeEntries(dailySummaries);
-    } catch (error) {
-      console.error('Error fetching time entries:', error);
+    } else {
       setError('Failed to load time entries');
-    } finally {
-      setLoading(false);
     }
+    
+    setLoading(false);
   };
 
   const exportReport = () => {
