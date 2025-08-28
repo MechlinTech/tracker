@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
+import { useSessionMonitor } from '../hooks/useSessionMonitor';
 import {
   Clock,
   Users,
@@ -17,6 +18,7 @@ import {
 } from 'lucide-react';
 import UserMenu from './UserMenu';
 import PasswordChangeModal from './PasswordChangeModal';
+import SessionWarning from './SessionWarning';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
@@ -24,6 +26,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const user = useStore((state) => state.user);
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = React.useState(false);
+  
+  // Monitor session status
+  useSessionMonitor();
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -39,7 +44,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       name: 'Team', 
       path: '/team', 
       icon: Users, 
-      show: user?.role === 'manager' || user?.role === 'admin' 
+      show: user?.role === 'manager' || user?.role === 'admin' || user?.role === 'hr'
     },
     { 
       name: 'Screenshots', 
@@ -175,6 +180,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         isOpen={isPasswordModalOpen}
         onClose={() => setIsPasswordModalOpen(false)}
       />
+
+      <SessionWarning />
 
       <footer className="mt-auto glass-panel border-t py-4">
         <div className="max-w-7xl mx-auto px-2 sm:px-3 lg:px-4">

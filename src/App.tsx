@@ -5,6 +5,8 @@ import { supabase } from './lib/supabase';
 import Layout from './components/Layout';
 import LoadingSpinner from './components/LoadingSpinner';
 import ProtectedRoute from './components/ProtectedRoute';
+import { useSessionMonitor } from './hooks/useSessionMonitor';
+import SessionExpirationModal from './components/SessionExpirationModal';
 // import { startScheduledJob, stopScheduledJob } from './services/scheduler';
 
 // Lazy load components
@@ -30,6 +32,9 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const setUser = useStore((state) => state.setUser);
   const isInitialized = useStore((state) => state.isInitialized);
+  
+  // Monitor session status
+  useSessionMonitor();
 
   useEffect(() => {
     if (!isInitialized) {
@@ -98,6 +103,7 @@ export default function App() {
 
   return (
     <Router>
+      <SessionExpirationModal />
       <Suspense fallback={<LoadingSpinner />}>
         <Routes>
           <Route path="/login" element={<Login />} />
@@ -124,7 +130,7 @@ export default function App() {
             </ProtectedRoute>
           } />
           <Route path="/team" element={
-            <ProtectedRoute allowedRoles={['manager', 'admin']}>
+            <ProtectedRoute allowedRoles={['manager', 'admin', 'hr']}>
               <Layout>
                 <TeamView />
               </Layout>

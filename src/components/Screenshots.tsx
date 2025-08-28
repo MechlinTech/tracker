@@ -104,19 +104,29 @@ export default function Screenshots() {
         .order('taken_at', { ascending: false });
 
       if (user?.role !== 'admin') {
-        if (user?.role === 'manager') {
-          // First get the managed users
+        if (user?.role === 'manager' || user?.role === 'hr') {
+          // Get managed users through the employee_managers table
           const { data: managedUsers, error: managedUsersError } = await supabase
-            .from('profiles')
-            .select('id')
+            .from('employee_managers')
+            .select('employee_id')
             .eq('manager_id', user.id);
 
           if (managedUsersError) throw managedUsersError;
           
+          // Also get users from legacy manager_id field
+          const { data: legacyManagedUsers, error: legacyError } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('manager_id', user.id);
+
+          if (legacyError) throw legacyError;
+          
           const userIds = [
-            ...(managedUsers?.map(u => u.id) || []),
+            ...(managedUsers?.map(u => u.employee_id) || []),
+            ...(legacyManagedUsers?.map(u => u.id) || []),
             user.id
           ];
+          
           if (userIds.length === 0) {
             setScreenshots([]);
             setLoading(false);
