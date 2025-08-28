@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
+import { handleApiCall, withAuthCheck } from '../lib/apiUtils';
 import { Download, Search, Filter } from 'lucide-react';
 import Select from 'react-select';
 import { format, parseISO, startOfDay, endOfDay } from 'date-fns';
@@ -45,6 +46,14 @@ export default function Reports() {
     },
   });
 
+  // Calculate pagination
+  const totalPages = Math.ceil(timeEntries.length / itemsPerPage);
+  // Ensure current page doesn't exceed total pages
+  const safeCurrentPage = totalPages > 0 ? Math.min(currentPage, totalPages) : 1;
+  const startIndex = (safeCurrentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentEntries = timeEntries.slice(startIndex, endIndex);
+
   const validateDateRange = (start: string, end: string): boolean => {
     if (start && end && new Date(start) > new Date(end)) {
       setError('Start date cannot be greater than end date');
@@ -60,37 +69,50 @@ export default function Reports() {
 
   useEffect(() => {
     fetchTimeEntries();
+    // Reset pagination to page 1 when filters change
+    setCurrentPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
+  // Adjust current page if it exceeds total pages after data changes
+  useEffect(() => {
+    if (totalPages > 0 && currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
+
   const fetchUsers = async () => {
-    try {
+    const usersList = await withAuthCheck(async () => {
       let query = supabase.from('profiles').select('id, full_name');
-      let usersList = [];
+      let result = [];
+      
       if (user?.role === 'manager') {
         query = query.eq('manager_id', user.id);
         const { data, error } = await query;
         if (error) throw error;
         // Add manager's own profile to the list
-        usersList = [...(data || []), { id: user.id, full_name: user.full_name }];
+        result = [...(data || []), { id: user.id, full_name: user.full_name }];
       } else if (!['admin', 'hr', 'accountant'].includes(user?.role || '')) {
         query = query.eq('id', user?.id);
         const { data, error } = await query;
         if (error) throw error;
-        usersList = data || [];
+        result = data || [];
       } else {
         const { data, error } = await query;
         if (error) throw error;
-        usersList = data || [];
+        result = data || [];
       }
+      
+      return result;
+    });
+
+    if (usersList) {
       setUsers(usersList.map(u => ({ value: u.id, label: u.full_name })));
-    } catch (error) {
-      console.error('Error fetching users:', error);
     }
   };
 
   const fetchTimeEntries = async () => {
-    try {
+    const data = await withAuthCheck(async () => {
       let managedUserIds: string[] = [];
       if (user?.role === 'manager') {
         const { data: managedUsers } = await supabase
@@ -129,10 +151,13 @@ export default function Reports() {
 
       const { data, error } = await query;
       if (error) throw error;
+      return data;
+    });
 
+    if (data) {
       // Group and sum by date and user
       const dailySummaries: DailyTimeEntry[] = [];
-      data?.forEach(entry => {
+      data.forEach(entry => {
         const date = format(parseISO(entry.start_time), 'yyyy-MM-dd');
         const existingEntry = dailySummaries.find(
           summary => summary.date === date && summary.user_id === entry.user_id
@@ -144,7 +169,7 @@ export default function Reports() {
           dailySummaries.push({
             date,
             user_id: entry.user_id,
-            user_name: entry.profiles.full_name,
+            user_name: (entry.profiles as any)?.full_name || 'Unknown User',
             total_hours: entry.duration || 0
           });
         }
@@ -153,12 +178,11 @@ export default function Reports() {
       // Sort by date descending
       dailySummaries.sort((a, b) => b.date.localeCompare(a.date));
       setTimeEntries(dailySummaries);
-    } catch (error) {
-      console.error('Error fetching time entries:', error);
+    } else {
       setError('Failed to load time entries');
-    } finally {
-      setLoading(false);
     }
+    
+    setLoading(false);
   };
 
   const exportReport = () => {
@@ -250,6 +274,7 @@ export default function Reports() {
     const hasUserFilter = usernames.length > 0;
     const hasDateFilter = !!(filters.dateRange.start && filters.dateRange.end);
     let fileName = '';
+    
     if (hasUserFilter && !hasDateFilter) {
       fileName = `${usernames.join('_')}_report_${formatShort(today)}`;
     } else if (!hasUserFilter && hasDateFilter) {
@@ -257,7 +282,10 @@ export default function Reports() {
     } else if (hasUserFilter && hasDateFilter) {
       fileName = `${usernames.join('_')}_${formatShort(new Date(filters.dateRange.start))}_${formatShort(new Date(filters.dateRange.end))}`;
     } else {
-      fileName = `report_${formatShort(today)}`;
+      // Monthly report format when no filters are applied
+      const monthName = format(today, 'MMMM');
+      const year = format(today, 'yyyy');
+      fileName = `Monthly_Report_${monthName}_${year}`;
     }
     XLSX.writeFile(wb, `${fileName}.xlsx`);
   };
@@ -277,13 +305,8 @@ export default function Reports() {
         end: '',
       },
     });
+    setCurrentPage(1);
   };
-
-  // Calculate pagination
-  const totalPages = Math.ceil(timeEntries.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentEntries = timeEntries.slice(startIndex, endIndex);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -394,7 +417,10 @@ export default function Reports() {
               Clear Filters
             </button>
             <button
-              onClick={fetchTimeEntries}
+              onClick={() => {
+                setCurrentPage(1);
+                fetchTimeEntries();
+              }}
               className="btn-primary"
             >
               <Filter className="h-4 w-4 mr-2" />
@@ -445,7 +471,7 @@ export default function Reports() {
             <div className="flex items-center justify-center px-4 py-3 bg-white border-t border-gray-200">
               <Pagination 
                 count={totalPages}
-                page={currentPage}
+                page={safeCurrentPage}
                 onChange={(_, page) => handlePageChange(page)}
                 color="primary"
                 showFirstButton
