@@ -3,11 +3,12 @@ version: "3.8"
 services:
 
   jenkins:
+    # Keep custom Jenkins image from `main`, because it supports Docker-in-Docker properly
     build:
       context: .
-      dockerfile: Jenkins-Dockerfile  # Use your custom Dockerfile
+      dockerfile: Jenkins-Dockerfile
     container_name: jenkins
-    user: root  # Required for Docker access
+    user: root
     restart: unless-stopped
     ports:
       - "8888:8080"

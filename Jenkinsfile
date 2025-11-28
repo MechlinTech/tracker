@@ -2,11 +2,12 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_HUB_CREDENTIALS = credentials('dockerhub-creds') // Stored Jenkins credentials ID
+        DOCKER_HUB_CREDENTIALS = credentials('dockerhub-creds')   // Jenkins credentials
         IMAGE_NAME = "tech120/time-tracker-image"
     }
 
     stages {
+
         stage('Checkout') {
             steps {
                 checkout scm
@@ -16,7 +17,7 @@ pipeline {
         stage('Set Tag') {
             steps {
                 script {
-                    // Extract branch name properly
+                    // Clean branch name
                     def branch = env.GIT_BRANCH?.replaceFirst(/^origin\//, '')
 
                     if (branch == 'main') {
@@ -35,7 +36,10 @@ pipeline {
         stage('Docker Login') {
             steps {
                 script {
-                    sh "echo ${DOCKER_HUB_CREDENTIALS_PSW} | docker login -u ${DOCKER_HUB_CREDENTIALS_USR} --password-stdin"
+                    sh """
+                        echo ${DOCKER_HUB_CREDENTIALS_PSW} | \
+                        docker login -u ${DOCKER_HUB_CREDENTIALS_USR} --password-stdin
+                    """
                 }
             }
         }
