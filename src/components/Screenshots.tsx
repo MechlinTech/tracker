@@ -90,18 +90,10 @@ export default function Screenshots() {
     setError(null);
 
     try {
-      let query = supabase
-        .from('screenshots')
-        .select(`
-          *,
-          time_entries(
-            user_id,
-            profiles(
-              full_name
-            )
-          )
-        `)
-        .order('taken_at', { ascending: false });
+      // First, get the time_entry_ids that match the user filter
+      let timeEntryQuery = supabase
+        .from('time_entries')
+        .select('id, user_id');
 
       if (user?.role !== 'admin') {
         if (user?.role === 'manager' || user?.role === 'hr') {
@@ -133,27 +125,62 @@ export default function Screenshots() {
             return;
           }
 
-          // Then filter screenshots by those user IDs
-          query = query.in('time_entries.user_id', userIds);
+          timeEntryQuery = timeEntryQuery.in('user_id', userIds);
         } else {
-          query = query.eq('time_entries.user_id', user.id);
+          timeEntryQuery = timeEntryQuery.eq('user_id', user.id);
         }
       }
 
-      const { data, error: fetchError } = await query;
+      const { data: timeEntries, error: timeEntriesError } = await timeEntryQuery;
+      if (timeEntriesError) throw timeEntriesError;
 
-      if (fetchError) throw fetchError;
+      if (!timeEntries || timeEntries.length === 0) {
+        setScreenshots([]);
+        setLoading(false);
+        return;
+      }
 
-      const screenshotsWithUrls = await Promise.all((data || []).map(async (screenshot) => {
+      const timeEntryIds = timeEntries.map(te => te.id);
+      const userIdToTimeEntryMap = new Map(timeEntries.map(te => [te.id, te.user_id]));
+
+      // Now fetch screenshots filtered by time_entry_ids with pagination
+      // Limit to recent screenshots to avoid timeout (e.g., last 1000)
+      const { data: screenshotsData, error: screenshotsError } = await supabase
+        .from('screenshots')
+        .select('*')
+        .in('time_entry_id', timeEntryIds)
+        .order('taken_at', { ascending: false })
+        .limit(1000); // Limit to prevent timeout
+
+      if (screenshotsError) throw screenshotsError;
+
+      // Get unique user IDs from time entries
+      const userIds = Array.from(new Set(timeEntries.map(te => te.user_id)));
+      
+      // Fetch user profiles in batch
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .in('id', userIds);
+
+      if (profilesError) throw profilesError;
+
+      const userProfileMap = new Map(profiles?.map(p => [p.id, p.full_name]) || []);
+
+      // Create signed URLs and map user data
+      const screenshotsWithUrls = await Promise.all((screenshotsData || []).map(async (screenshot) => {
         const { data: urlData } = await supabase.storage
           .from('screenshots')
           .createSignedUrl(screenshot.storage_path, 3600);
+
+        const userId = userIdToTimeEntryMap.get(screenshot.time_entry_id);
+        const fullName = userProfileMap.get(userId) || 'Unknown User';
 
         return {
           ...screenshot,
           url: urlData?.signedUrl,
           user: {
-            full_name: screenshot.time_entries.profiles.full_name
+            full_name: fullName
           }
         };
       }));
